@@ -1,9 +1,12 @@
 import json
 from pathlib import Path
+import pandas as pd
 from tethys_sdk.layouts import MapLayout
 from tethys_sdk.routing import controller
 from .app import MapLayoutTutorial as app
 
+
+MODEL_OUTPUT_FOLDER_NAME = 'sample_nextgen_data'
 
 @controller(name="home", app_workspace=True)
 class MapLayoutTutorialMap(MapLayout):
@@ -14,13 +17,15 @@ class MapLayoutTutorialMap(MapLayout):
     default_map_extent = [-87.83371926334216, 33.73443611122197, -86.20833410475134, 34.456557011634175]
     max_zoom = 14
     min_zoom = 9
+    show_properties_popup = True
+    plot_slide_sheet = True
 
     def compose_layers(self, request, map_view, app_workspace, *args, **kwargs):
         """
         Add layers to the MapLayout and create associated layer group objects.
         """
         # Load GeoJSON from files
-        config_directory = Path(app_workspace.path) / 'sample_nextgen_data' / 'config'
+        config_directory = Path(app_workspace.path) / MODEL_OUTPUT_FOLDER_NAME / 'config'
 
         # Nexus Points
         nexus_path = config_directory / 'nexus_4326.geojson'
@@ -92,3 +97,85 @@ class MapLayoutTutorialMap(MapLayout):
                 }}
             }},
         }
+
+    def get_plot_for_layer_feature(self, request, layer_name, feature_id, layer_data, feature_props, app_workspace,
+                                   *args, **kwargs):
+        """
+        Retrieves plot data for given feature on given layer.
+
+        Args:
+            layer_name (str): Name/id of layer.
+            feature_id (str): ID of feature.
+            layer_data (dict): The MVLayer.data dictionary.
+            feature_props (dict): The properties of the selected feature.
+
+        Returns:
+            str, list<dict>, dict: plot title, data series, and layout options, respectively.
+        """
+        output_directory = Path(app_workspace.path) / MODEL_OUTPUT_FOLDER_NAME / 'outputs'
+
+        # Get the feature id
+        id = feature_props.get('id')
+
+        # Nexus
+        if layer_name == 'nexus':
+            layout = {
+                'yaxis': {
+                    'title': 'Streamflow (cfs)'
+                }
+            }
+
+            output_path = output_directory / f'{id}_output.csv'
+            if not output_path.exists():
+                print(f'WARNING: no such file {output_path}')
+                return f'No Data Found for Nexus "{id}"', [], layout
+
+            # Parse with Pandas
+            df = pd.read_csv(output_path)
+            time_col = df.iloc[:, 1]
+            streamflow_cms_col = df.iloc[:, 2]
+            sreamflow_cfs_col = streamflow_cms_col * 35.314  # Convert to cfs
+            data = [
+                {
+                    'name': 'Streamflow',
+                    'mode': 'lines',
+                    'x': time_col.tolist(),
+                    'y': sreamflow_cfs_col.tolist(),
+                    'line': {
+                        'width': 2,
+                        'color': 'blue'
+                    }
+                },
+            ]
+
+            return f'Streamflow at Nexus "{id}"', data, layout
+
+        # Catchments
+        else:
+            layout = {
+                'yaxis': {
+                    'title': 'Evapotranspiration (mm/hr)'
+                }
+            }
+
+            output_path = output_directory / f'{id}.csv'
+            if not output_path.exists():
+                print(f'WARNING: no such file {output_path}')
+                return f'No Data Found for Catchment "{id}"', [], layout
+
+            # Parse with Pandas
+            df = pd.read_csv(output_path)
+            data = [
+                {
+                    'name': 'Evapotranspiration',
+                    'mode': 'lines',
+                    'x': df.iloc[:, 1].tolist(),
+                    'y': df.iloc[:, 2].tolist(),
+                    'line': {
+                        'width': 2,
+                        'color': 'red'
+                    }
+                },
+            ]
+
+            return f'Evapotranspiration at Catchment "{id}"', data, layout
