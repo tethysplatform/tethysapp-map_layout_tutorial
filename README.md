@@ -10,4 +10,4 @@ Contains the code for each section and solution for the Map Layout tutorial (htt
     * VSCode: https://code.visualstudio.com/download
         * Also, Install the Python Extension Pack: https://marketplace.visualstudio.com/items?itemName=donjayamanne.python-extension-pack
     * PyCharm: https://www.jetbrains.com/pycharm/download/
-* Download the data that we will be using for the tutorial: sample_nextgen_data.zip
+* Download the data that we will be using for the tutorial: [sample_nextgen_data.zip](https://drive.google.com/file/d/10Q960TiHNer-6cwjPYN_t4KsOX2917Hl/view?usp=share_link)
