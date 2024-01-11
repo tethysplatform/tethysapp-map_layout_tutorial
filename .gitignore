@@ -9,4 +9,4 @@
 *.DS_Store
 .idea/
 services.yml
-tethysapp/map_layout_tutorial/workspaces/appworkspaces/
+*.gpkg
