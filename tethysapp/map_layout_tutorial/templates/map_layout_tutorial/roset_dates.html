@@ -1,0 +1,12 @@
+{% extends "tethys_layouts/map_layout/roset_view.html" %}
+{% load static %}
+{% load tethys_gizmos %}
+
+{% block app_content %}
+
+<!-- Contents of the app -->
+  <p>Graph For: <i><span id="lat">{{lat}}</span> <span id="lon">{{lon}}</span></i>
+  &nbsp;time period: <span id="startDate">{{startDate}}</span>&nbsp;-&nbsp;<span id="endDate">{{endDate}}</span></p>
+
+
+{% endblock %}
