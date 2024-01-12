@@ -9,3 +9,7 @@
 *.DS_Store
 .idea/
 services.yml
+appworkspace/
+*.gpkg
+*.parquet
+*.csv

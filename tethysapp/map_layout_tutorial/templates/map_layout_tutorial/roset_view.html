@@ -1,0 +1,29 @@
+{% extends "tethys_layouts/map_layout/map_layout.html" %}
+{% load static %}
+{% load tethys_gizmos %}
+
+<!-- add drop down for all the nwm stations with filter added -->
+{% block app_navigation %}
+  {{ block.super }}
+
+  {% block after_nav_header %}
+  <!--<form method="get" action="roset_dates/"-->
+  <br>
+  
+  {% gizmo date_picker start_date_picker %}
+  {% gizmo date_picker end_date_picker %}
+       
+  
+  <!--</form>
+
+  <button onclick="fetchData()">Fetch Data</button>-->
+
+  {% endblock %}
+
+{% endblock %}
+
+{% block scripts %}
+  {{ block.super }}
+  <script src="{% static 'map_layout_tutorial/js/roset_aws.js' %}" type="text/javascript"></script>
+
+{% endblock %}

@@ -1,5 +1,8 @@
 {% extends "map_layout_tutorial/base.html" %}
+{% load static %}
+
 {% load tethys_gizmos %}
+
 
 {% block header_buttons %}
   <div class="header-button glyphicon-button" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Help">
@@ -8,12 +11,13 @@
 {% endblock %}
 
 {% block app_content %}
+
   <h1>Welcome to your Tethys App!</h1>
   <p>Take advantage of beautiful typography to organize the content of your app:</p>
   <h1>Heading 1</h1>
   <h2>Heading 2</h2>
   <h3>Heading 3</h3>
-  <h4>Heading 4</h4>
+  <h4>Heading 4</h4> 
   <h5>Heading 5</h5>
   <h6>Heading 6</h6>
 {% endblock %}
@@ -43,9 +47,10 @@
 {% endblock %}
 
 {% block app_actions %}
-  {% gizmo save_button %}
-  {% gizmo edit_button %}
-  {% gizmo remove_button %}
-  {% gizmo previous_button %}
-  {% gizmo next_button %}
+
+{% endblock %}
+
+{% block scripts %}
+  {{ block.super }}
+  <script src="{% static 'map_layout_tutorial/js/main.js' %}" type="text/javascript"></script>
 {% endblock %}
