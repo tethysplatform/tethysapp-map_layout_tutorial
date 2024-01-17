@@ -9,6 +9,8 @@ from .app import MapLayoutTutorial as app
 #functions to load AWS data
 import boto3
 import os
+from botocore import UNSIGNED
+from botocore.client import Config
 
 #Date picker
 from tethys_sdk.gizmos import DatePicker
@@ -19,8 +21,8 @@ from django.http import JsonResponse
 
 HOME = os.getcwd()
 MODEL_OUTPUT_FOLDER_NAME = 'sample_nextgen_data'
-INIT_DATE='8/22/2022' 
-END_DATE='8/23/2022'
+INIT_DATE='1/1/2019' 
+END_DATE='6/11/2019'
 
 #Connect to AWS s3 for data
 #home = Path(app_workspace.path) #"./workspaces/app_workspace"
@@ -31,10 +33,11 @@ SESSION = boto3.Session(
     aws_access_key_id=ACCESS['Access key ID'][0],
     aws_secret_access_key=ACCESS['Secret access key'][0],
 )
-S3 = SESSION.resource('s3')
+s3 = SESSION.resource('s3')
 #AWS bucket information
 BUCKET_NAME = 'streamflow-app-data'
-BUCKET = S3.Bucket(BUCKET_NAME) 
+BUCKET = s3.Bucket(BUCKET_NAME) 
+S3 = boto3.resource('s3', config=Config(signature_version=UNSIGNED))
 
 
 @controller(name="home", app_workspace=True)
@@ -69,9 +72,9 @@ class MapLayoutTutorialMap(MapLayout):
         # data_test = request.GET.get('other')
         # print(data_test)
         # Load GeoJSON from files
-        config_directory = Path(app_workspace.path) / MODEL_OUTPUT_FOLDER_NAME / 'config'
+        #config_directory = Path(app_workspace.path) / MODEL_OUTPUT_FOLDER_NAME / 'config'
         
-        '''
+        ''' Change the below nexus points and catchment files if you want to add them to the app interface
         # Nexus Points
         nexus_path = config_directory / 'nexus_4326.geojson'
         with open(nexus_path) as nf:
@@ -103,10 +106,10 @@ class MapLayoutTutorialMap(MapLayout):
             plottable=True,
         )
         '''
-        # flowpaths 
-        flowpaths_path = config_directory / 'flowpaths_4326.geojson' 
-        with open(flowpaths_path) as ff:
-            flowpaths_geojson = json.loads(ff.read())
+        # flowpaths - from AWS s3
+        flowpaths_path = 'GeoJSON/AL/flowpaths_4326_AL.geojson'
+        obj = s3.Object(BUCKET_NAME, flowpaths_path)
+        flowpaths_geojson = json.load(obj.get()['Body']) 
 
         flowpaths_layer = self.build_geojson_layer(
             geojson=flowpaths_geojson,
@@ -118,10 +121,10 @@ class MapLayoutTutorialMap(MapLayout):
             plottable=True,
         )
 
-        # USGS stations
-        staions_path = config_directory / 'StreamStats_4326_AL.geojson' #can we select the geojson files from the input fields (e.g: AL, or a dropdown)
-        with open(staions_path) as ff:
-            stations_geojson = json.loads(ff.read())
+        # USGS stations - from AWS s3
+        stations_path = 'GeoJSON/AL/StreamStats_4326_AL.geojson'
+        obj = s3.Object(BUCKET_NAME, stations_path)
+        stations_geojson = json.load(obj.get()['Body']) 
 
         stations_layer = self.build_geojson_layer(
             geojson=stations_geojson,
@@ -205,7 +208,7 @@ class MapLayoutTutorialMap(MapLayout):
         id = feature_props.get('id') 
         NHD_id = feature_props.get('NHD_id') 
         state = feature_props.get('state')
-        print(id, NHD_id, state)
+        #print(id, NHD_id, state)
 
         '''need to create our own geojson files, likely for usgs sites and nhd reaches 
         3. add all nhdplus reaches (blue lines) for all available nhdplus streams in the HUC 
@@ -329,20 +332,20 @@ class MapLayoutTutorialMap(MapLayout):
             display_text='Start Date',
             autoclose=False,
             format='MM d, yyyy',
-            start_date='8/22/2022',
-            start_view='month',
+            start_date='1/1/2019',
+            start_view='year',
             today_button=False, 
-            initial='August 22, 2022'
+            initial='January 1, 2019'
         )
         end_date_picker = DatePicker( 
             name='end-date',
             display_text='End Date',
-            start_date='8/23/2022',
+            start_date='6/11/2019',
             autoclose=False,
             format='MM d, yyyy',
-            start_view='month',
+            start_view='year',
             today_button=False, 
-            initial='September 5, 2022'
+            initial='June 11, 2019'
         )
 
         # Call Super
@@ -353,6 +356,6 @@ class MapLayoutTutorialMap(MapLayout):
         )
         context['start_date_picker'] = start_date_picker  
         context['end_date_picker'] = end_date_picker  
-
+        #print(context)
         return context
-        return render(request, 'map_layout_tutorial/roset_view.html', context)
+        #return render(request, 'map_layout_tutorial/roset_view.html', context)
