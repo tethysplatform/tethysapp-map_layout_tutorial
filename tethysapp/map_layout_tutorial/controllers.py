@@ -17,9 +17,26 @@ from tethys_sdk.gizmos import DatePicker
 import datetime
 from django.http import JsonResponse
 
+HOME = os.getcwd()
 MODEL_OUTPUT_FOLDER_NAME = 'sample_nextgen_data'
-INIT_DATE='8/22/2022'
+INIT_DATE='8/22/2022' 
 END_DATE='8/23/2022'
+
+#Connect to AWS s3 for data
+#home = Path(app_workspace.path) #"./workspaces/app_workspace"
+KEYPATH = f"{HOME}/tethysapp/map_layout_tutorial/AWSaccessKeys.csv"
+ACCESS = pd.read_csv(KEYPATH)
+#start session
+SESSION = boto3.Session(
+    aws_access_key_id=ACCESS['Access key ID'][0],
+    aws_secret_access_key=ACCESS['Secret access key'][0],
+)
+S3 = SESSION.resource('s3')
+#AWS bucket information
+BUCKET_NAME = 'streamflow-app-data'
+BUCKET = S3.Bucket(BUCKET_NAME) 
+
+
 @controller(name="home", app_workspace=True)
 class MapLayoutTutorialMap(MapLayout):
     app = app
@@ -45,7 +62,7 @@ class MapLayoutTutorialMap(MapLayout):
         return JsonResponse({'success': True})
 
 
-    def compose_layers(self, request, map_view, app_workspace, *args, **kwargs):
+    def compose_layers(self, request, map_view, app_workspace, *args, **kwargs): #can we select the geojson files from the input fields (e.g: AL, or a dropdown)
         """
         Add layers to the MapLayout and create associated layer group objects.
         """
@@ -54,6 +71,7 @@ class MapLayoutTutorialMap(MapLayout):
         # Load GeoJSON from files
         config_directory = Path(app_workspace.path) / MODEL_OUTPUT_FOLDER_NAME / 'config'
         
+        '''
         # Nexus Points
         nexus_path = config_directory / 'nexus_4326.geojson'
         with open(nexus_path) as nf:
@@ -70,6 +88,7 @@ class MapLayoutTutorialMap(MapLayout):
         )
 
         # Catchments
+        
         catchments_path = config_directory / 'catchments_4326.geojson'
         with open(catchments_path) as cf:
             catchments_geojson = json.loads(cf.read())
@@ -83,9 +102,9 @@ class MapLayoutTutorialMap(MapLayout):
             selectable=True,
             plottable=True,
         )
-
-        # flowpaths
-        flowpaths_path = config_directory / 'flowpaths_4326.geojson'
+        '''
+        # flowpaths 
+        flowpaths_path = config_directory / 'flowpaths_4326.geojson' 
         with open(flowpaths_path) as ff:
             flowpaths_geojson = json.loads(ff.read())
 
@@ -100,7 +119,7 @@ class MapLayoutTutorialMap(MapLayout):
         )
 
         # USGS stations
-        staions_path = config_directory / 'StreamStats_AL_4326.geojson'
+        staions_path = config_directory / 'StreamStats_4326_AL.geojson' #can we select the geojson files from the input fields (e.g: AL, or a dropdown)
         with open(staions_path) as ff:
             stations_geojson = json.loads(ff.read())
 
@@ -122,9 +141,9 @@ class MapLayoutTutorialMap(MapLayout):
                 layer_control='checkbox',  # 'checkbox' or 'radio'
                 layers=[
                     stations_layer,
-                    nexus_layer,
-                    catchments_layer,
-                    flowpaths_layer
+                    #nexus_layer,
+                    flowpaths_layer,
+                    #catchments_layer
                     
                 ]
             )
@@ -181,89 +200,76 @@ class MapLayoutTutorialMap(MapLayout):
 
         Returns:
             str, list<dict>, dict: plot title, data series, and layout options, respectively.
-        """
-        # breakpoint()
-        print(request)
+      """
+        # Get the feature ids
+        id = feature_props.get('id') 
+        NHD_id = feature_props.get('NHD_id') 
+        state = feature_props.get('state')
+        print(id, NHD_id, state)
 
-        #class function to load using AWS data
-        #load access key
-        home = Path(app_workspace.path) #"./workspaces/app_workspace"
-        keypath = "AWSaccessKeys.csv"
-        access = pd.read_csv(f"{home}/{keypath}")
-
-        #start session
-        session = boto3.Session(
-            aws_access_key_id=access['Access key ID'][0],
-            aws_secret_access_key=access['Secret access key'][0],
-        )
-        self.s3 = session.resource('s3')
-        #AWS bucket information
-        bucket_name = 'streamflow-app-data'
-        #s3 = boto3.resource('s3', config=Config(signature_version=UNSIGNED))
-        self.bucket = self.s3.Bucket(bucket_name)
-
-        #output directory for AWS
-        output_directory = 'MapLayout/Nexus'
-        #output_directory = Path(app_workspace.path) / MODEL_OUTPUT_FOLDER_NAME / 'outputs' # change this to S3, model output folder could be the model name in S3
-        print(output_directory)
+        '''need to create our own geojson files, likely for usgs sites and nhd reaches 
+        3. add all nhdplus reaches (blue lines) for all available nhdplus streams in the HUC 
+        '''
         
 
-        # Get the feature id
-        id = feature_props.get('id') 
-        '''need to create our own geojson files, likely for usgs sites and nhd reaches 
-        1. start with points (usgs locations) - reach class first, then huc class if time
-        2. add nhdplus reaches for colocated usgs sites
-        3. add all nhdplus reaches (blue lines) for all available nhdplus streams in the HUC 
-        4. Add catchment extend, depending on input huc?
-
-        '''
-
-        # Nexus
-        if layer_name == 'nexus':
+        # USGS observed flow
+        if layer_name == 'USGS Stations':
             layout = {
                 'yaxis': {
                     'title': 'Streamflow (cfs)'
-                }
+                } 
             }
-
-            output_path = f'{output_directory}/{id}_output.csv' 
-         
-
-            #if not output_path.exists():
-             #   print(f'WARNING: no such file {output_path}')
-              #  return f'No Data Found for Nexus "{id}"', [], layout
-
-            # Parse with Pandas
-            #df = pd.read_csv(output_path)# this file format is the same as ours!
-            #Using AWS
-            obj = self.bucket.Object(output_path)
+            #output directory for AWS
+            #USGS observed flow
+            USGS_directory = f"NWIS/NWIS_sites_{state}.h5/NWIS_{id}.csv"
+            obj = BUCKET.Object(USGS_directory)
             body = obj.get()['Body']
-            df = pd.read_csv(body)
-            df.pop('0')
+            USGS_df = pd.read_csv(body)
+            USGS_df.pop('Unnamed: 0')    
 
-           
+            #modeled flow, starting with NWM
+            self.model = 'NWM_v2.1'
+            #NHD_id = '19626108'
+            model_directory = f"{self.model}/NHD_segments_{state}.h5/{self.model}_{NHD_id}.csv"  #put state in geojson file
+            obj = BUCKET.Object(model_directory)
+            body = obj.get()['Body']
+            model_df = pd.read_csv(body)
+            model_df.pop('Unnamed: 0')
 
-            time_col = df.iloc[:, 0] # date, adjust per Data source
-            #streamflow_cms_col = df.iloc[:, 2] # streamflow, adjust per Data source, Tethys demo
-            streamflow_cms_col = df.iloc[:, 1] # streamflow, adjust per Data source, AWS demo
-            streamflow_cfs_col = streamflow_cms_col * 35.314  # Convert to cfs
-            streamflow_cfs_col2 = streamflow_cfs_col*1.2
+            #combine Dfs, remove nans
+            USGS_df.drop_duplicates(subset=['Datetime'], inplace=True)
+            model_df.drop_duplicates(subset=['Datetime'],  inplace=True)
+            #align by index
+            USGS_df.set_index('Datetime', inplace = True)
+            model_df.set_index('Datetime', inplace = True)
+            DF = pd.concat([USGS_df, model_df], axis = 1, join = 'inner')
+            DF.reset_index(inplace=True)
+
+
+            #put USGS and modeled streamflows together
+            time_col = DF.Datetime.to_list()[:45] # date, adjust per Data source, limited to less than 500 obs/days (currently defaulted to the first 450)
+            USGS_streamflow_cfs = DF.USGS_flow.to_list()[:45] # date, adjust per Data source, limited to less than 500 obs/days (currently defaulted to the first 450)
+            Mod_streamflow_cfs = DF[f"{self.model[:3]}_flow"].to_list()[:45] # date, adjust per Data source, limited to less than 500 obs/days (currently defaulted to the first 450)
+            #print('USGS', USGS_streamflow_cfs)
+            #print('NWM', Mod_streamflow_cfs)
+
+
             data = [
                 {
-                    'name': 'Streamflow',
+                    'name': 'USGS Observed',
                     'mode': 'lines',
-                    'x': time_col.tolist(),
-                    'y': streamflow_cfs_col.tolist(),
+                    'x': time_col,
+                    'y': USGS_streamflow_cfs,
                     'line': {
                         'width': 2,
                         'color': 'blue'
                     }
                 },
                 {
-                    'name': 'Streamflow scaled',
+                    'name': f"{self.model} Modeled",
                     'mode': 'lines',
-                    'x': time_col.tolist(),
-                    'y': streamflow_cfs_col2.tolist(),
+                    'x': time_col,
+                    'y': Mod_streamflow_cfs,
                     'line': {
                         'width': 2,
                         'color': 'red'
@@ -272,9 +278,10 @@ class MapLayoutTutorialMap(MapLayout):
             ]
 
 
-            return f'Streamflow at Nexus "{id}"', data, layout
+            return f'{self.model} Modeled and Observed Streamflow at USGS site: "{id}"', data, layout
 
         # Catchments
+        '''
         if layer_name == 'catchments':
             layout = {
                 'yaxis': {
@@ -303,52 +310,7 @@ class MapLayoutTutorialMap(MapLayout):
             ]
 
             return f'Evapotranspiration at Catchment "{id}"', data, layout
-        
-        # flowpaths
-        if layer_name == 'flowpaths':
-            layout = {
-                'yaxis': {
-                    'title': 'Streamflow (cfs)'
-                }
-            }
-
-            output_path = output_directory / f'{id}_output.csv' # this file format is the same as ours!
-            if not output_path.exists():
-                print(f'WARNING: no such file {output_path}')
-                return f'No Data Found for flowpath "{id}"', [], layout
-
-            # Parse with Pandas
-            df = pd.read_csv(output_path)# this file format is the same as ours!
-            time_col = df.iloc[:, 1] # we could also subset for date/time here too
-            streamflow_cms_col = df.iloc[:, 2] # we could also subset for date/time here too
-            streamflow_cfs_col = streamflow_cms_col * 35.314  # Convert to cfs
-            streamflow_cfs_col2 = streamflow_cfs_col*1.2
-            data = [
-                {
-                    'name': 'Streamflow',
-                    'mode': 'lines',
-                    'x': time_col.tolist(),
-                    'y': streamflow_cfs_col.tolist(),
-                    'line': {
-                        'width': 2,
-                        'color': 'blue'
-                    }
-                },
-                {
-                    'name': 'Streamflow scaled',
-                    'mode': 'lines',
-                    'x': time_col.tolist(),
-                    'y': streamflow_cfs_col2.tolist(),
-                    'line': {
-                        'width': 2,
-                        'color': 'red'
-                    }
-                },
-            ]
-
-
-            return f'Streamflow in flowpath "{id}"', data, layout
-
+'''
 
     def get_context(self, request, *args, **kwargs):
         """
