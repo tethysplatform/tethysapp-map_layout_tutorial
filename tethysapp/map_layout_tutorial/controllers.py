@@ -51,7 +51,7 @@ class MapLayoutTutorialMap(MapLayout):
     plot_slide_sheet = True
     template_name = 'map_layout_tutorial/roset_view.html'
 
-    def update_dates(self, request, *args, **kwargs):
+    def test_rest_api(self, request, *args, **kwargs):
         """
         Custom REST method for updating data form Map Layout view.
         """
