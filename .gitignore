@@ -13,3 +13,4 @@ appworkspace/
 *.gpkg
 *.parquet
 *.csv
+*.geojson

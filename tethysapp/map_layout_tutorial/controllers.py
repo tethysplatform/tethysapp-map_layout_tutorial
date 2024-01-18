@@ -54,13 +54,29 @@ class MapLayoutTutorialMap(MapLayout):
     plot_slide_sheet = True
     template_name = 'map_layout_tutorial/roset_view.html'
 
-    def test_rest_api(self, request, *args, **kwargs):
+    def update_data(self, request, *args, **kwargs):
         """
         Custom REST method for updating data form Map Layout view.
         """
-        parms = request.GET
-        # breakpoint()
-        print(parms)
+        #  = request.POST
+        
+        INIT_DATE=request.POST.get('start_date')
+        END_DATE=request.POST.get('end_date')
+
+        print(INIT_DATE,END_DATE)
+        # Create layer groups
+        layer_groups = [
+            self.build_layer_group(
+                id='nextgen-features',
+                display_name='NextGen Features',
+                layer_control='checkbox',  # 'checkbox' or 'radio'
+                layers=[
+                    #catchments_layer
+                    
+                ]
+            )
+        ]
+        # update the map respectively
         ...
         return JsonResponse({'success': True})
 
@@ -72,7 +88,7 @@ class MapLayoutTutorialMap(MapLayout):
         # data_test = request.GET.get('other')
         # print(data_test)
         # Load GeoJSON from files
-        #config_directory = Path(app_workspace.path) / MODEL_OUTPUT_FOLDER_NAME / 'config'
+        config_directory = Path(app_workspace.path) / MODEL_OUTPUT_FOLDER_NAME / 'config'
         
         ''' Change the below nexus points and catchment files if you want to add them to the app interface
         # Nexus Points
@@ -107,9 +123,13 @@ class MapLayoutTutorialMap(MapLayout):
         )
         '''
         # flowpaths - from AWS s3
-        flowpaths_path = 'GeoJSON/AL/flowpaths_4326_AL.geojson'
-        obj = s3.Object(BUCKET_NAME, flowpaths_path)
-        flowpaths_geojson = json.load(obj.get()['Body']) 
+        #flowpaths_path = 'GeoJSON/AL/flowpaths_4326_AL.geojson'
+        #obj = s3.Object(BUCKET_NAME, flowpaths_path)
+        #flowpaths_geojson = json.load(obj.get()['Body']) 
+        #flowpaths_path = config_directory / 'flowpath_08_1000_4326.geojson'
+        flowpaths_path = config_directory / 'flowpaths_4326_AL.geojson'
+        with open(flowpaths_path) as ff:
+            flowpaths_geojson = json.loads(ff.read())
 
         flowpaths_layer = self.build_geojson_layer(
             geojson=flowpaths_geojson,
