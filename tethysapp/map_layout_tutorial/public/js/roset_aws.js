@@ -17,16 +17,47 @@ function getCookie(name) {
 }
 let csrftoken = getCookie('csrftoken');
 
+// let start_date = document.getElementById("start-date").value
+// let end_date = document.getElementById("end-date").value
+
+// var data = new URLSearchParams();
+// data.append('method', 'test_rest_api');
+// data.append('start_date', start_date);
+// data.append('end_date', end_date);
+// data.append('state_id', 'random_id');
 
 
-fetch(".", {
-   method: 'POST',
-   headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      "X-CSRFToken": csrftoken 
-   },
-   body:
-      'method=test_rest_api&other=1'
-}).then((response) => response.json()).then((data) => {
-// Do something magical with your data :)
-});s
+// make an onchange function here 
+document.getElementById("btn-id").addEventListener('click',function(){
+    let start_date = document.getElementById("start-date").value
+    let end_date = document.getElementById("end-date").value
+    // dropdwon id --> value
+    var data = new URLSearchParams();
+    data.append('method', 'update_data');
+    data.append('start_date', start_date);
+    data.append('end_date', end_date);
+    data.append('state_id', 'random_id');
+    //make the function here
+    fetch(".", {
+        method: 'POST',
+        headers: {
+           "Content-Type": "application/x-www-form-urlencoded",
+           "X-CSRFToken": csrftoken 
+        },
+        body: data
+     }).then((response) => response.json()).then((data) => {
+     // Do something magical with your data :)
+     });
+
+})
+
+// fetch(".", {
+//    method: 'POST',
+//    headers: {
+//       "Content-Type": "application/x-www-form-urlencoded",
+//       "X-CSRFToken": csrftoken 
+//    },
+//    body: data
+// }).then((response) => response.json()).then((data) => {
+// // Do something magical with your data :)
+// });
