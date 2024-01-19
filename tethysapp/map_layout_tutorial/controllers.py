@@ -89,6 +89,8 @@ class MapLayoutTutorialMap(MapLayout):
         # print(data_test)
         # Load GeoJSON from files
         config_directory = Path(app_workspace.path) / MODEL_OUTPUT_FOLDER_NAME / 'config'
+
+        state = 'MS' 
         
         ''' Change the below nexus points and catchment files if you want to add them to the app interface
         # Nexus Points
@@ -123,13 +125,13 @@ class MapLayoutTutorialMap(MapLayout):
         )
         '''
         # flowpaths - from AWS s3
-        #flowpaths_path = 'GeoJSON/AL/flowpaths_4326_AL.geojson'
-        #obj = s3.Object(BUCKET_NAME, flowpaths_path)
-        #flowpaths_geojson = json.load(obj.get()['Body']) 
-        #flowpaths_path = config_directory / 'flowpath_08_1000_4326.geojson'
-        flowpaths_path = config_directory / 'flowpaths_4326_AL.geojson'
-        with open(flowpaths_path) as ff:
-            flowpaths_geojson = json.loads(ff.read())
+        flowpaths_path = f"GeoJSON/flowpath_{state}_4326.geojson"
+        obj = s3.Object(BUCKET_NAME, flowpaths_path)
+        flowpaths_geojson = json.load(obj.get()['Body']) 
+        
+        #flowpaths_path = f"{config_directory}/flowpath_{state}_4326.geojson"
+        #with open(flowpaths_path) as ff: 
+         #   flowpaths_geojson = json.loads(ff.read())
 
         flowpaths_layer = self.build_geojson_layer(
             geojson=flowpaths_geojson,
@@ -142,9 +144,13 @@ class MapLayoutTutorialMap(MapLayout):
         )
 
         # USGS stations - from AWS s3
-        stations_path = 'GeoJSON/AL/StreamStats_4326_AL.geojson'
+        stations_path = f"GeoJSON/StreamStats_{state}_4326.geojson" #will need to change the filename to have state before 4326
         obj = s3.Object(BUCKET_NAME, stations_path)
         stations_geojson = json.load(obj.get()['Body']) 
+
+        #stations_path = f"{config_directory}/StreamStats_{state}_4326.geojson"
+        #with open(stations_path) as ff: 
+         #   stations_geojson = json.loads(ff.read())
 
         stations_layer = self.build_geojson_layer(
             geojson=stations_geojson,
