@@ -13,9 +13,8 @@ from botocore import UNSIGNED
 from botocore.client import Config
 
 #Date picker
-from tethys_sdk.gizmos import DatePicker
+from tethys_sdk.gizmos import DatePicker, SelectInput
 from django.shortcuts import render
-from tethys_sdk.gizmos import DatePicker
 import datetime
 from django.http import JsonResponse
 
@@ -46,40 +45,40 @@ class MapLayoutTutorialMap(MapLayout):
     base_template = 'map_layout_tutorial/base.html'
     map_title = 'Research Oriented Streamflow Evaluation Toolset'
     map_subtitle = 'An open-source hydrological model evaluation tool for NHDPlus models'
-    basemaps = ['OpenStreetMap', 'ESRI']
+    basemaps = ['ESRI','OpenStreetMap']
     default_map_extent = [-87.83371926334216, 33.73443611122197, -86.20833410475134, 34.456557011634175]
-    max_zoom = 14
-    min_zoom = 9
+    max_zoom = 15
+    min_zoom = 1
     show_properties_popup = True
     plot_slide_sheet = True
     template_name = 'map_layout_tutorial/roset_view.html'
+    show_map_clicks = True
+    show_map_click_popup = True
 
-    def update_data(self, request, *args, **kwargs):
+
+
+    def update_data(self, request,app_workspace, *args, **kwargs):
         """
         Custom REST method for updating data form Map Layout view.
         """
         #  = request.POST
-        
+        # breakpoint()
         INIT_DATE=request.POST.get('start_date')
         END_DATE=request.POST.get('end_date')
-
-        print(INIT_DATE,END_DATE)
-        # Create layer groups
-        layer_groups = [
-            self.build_layer_group(
-                id='nextgen-features',
-                display_name='NextGen Features',
-                layer_control='checkbox',  # 'checkbox' or 'radio'
-                layers=[
-                    #catchments_layer
-                    
-                ]
-            )
-        ]
-        # update the map respectively
+        STATE=request.POST.get('state_id')
+        #add model name dropdown
+        # config_directory = Path(app_workspace.path) / MODEL_OUTPUT_FOLDER_NAME / 'config'
+        # USGS stations - from AWS s3
+        stations_path = f"GeoJSON/StreamStats_{STATE}_4326.geojson" #will need to change the filename to have state before 4326
+        obj = s3.Object(BUCKET_NAME, stations_path)        
+        stations_geojson = json.dumps(json.load(obj.get()['Body']))
+        
         ...
-        return JsonResponse({'success': True})
+        return JsonResponse({'stations_geojson': stations_geojson})
 
+    # def get_data():
+        # you get the data
+        # pass
 
     def compose_layers(self, request, map_view, app_workspace, *args, **kwargs): #can we select the geojson files from the input fields (e.g: AL, or a dropdown)
         """
@@ -90,7 +89,7 @@ class MapLayoutTutorialMap(MapLayout):
         # Load GeoJSON from files
         config_directory = Path(app_workspace.path) / MODEL_OUTPUT_FOLDER_NAME / 'config'
 
-        state = 'MS' 
+        state = 'AL' # note, no data for mississippi
         
         ''' Change the below nexus points and catchment files if you want to add them to the app interface
         # Nexus Points
@@ -125,13 +124,13 @@ class MapLayoutTutorialMap(MapLayout):
         )
         '''
         # flowpaths - from AWS s3
-        flowpaths_path = f"GeoJSON/flowpath_{state}_4326.geojson"
-        obj = s3.Object(BUCKET_NAME, flowpaths_path)
-        flowpaths_geojson = json.load(obj.get()['Body']) 
+        #flowpaths_path = f"GeoJSON/flowpath_{state}_4326.geojson"
+        #obj = s3.Object(BUCKET_NAME, flowpaths_path)
+        #flowpaths_geojson = json.load(obj.get()['Body']) 
         
-        #flowpaths_path = f"{config_directory}/flowpath_{state}_4326.geojson"
-        #with open(flowpaths_path) as ff: 
-         #   flowpaths_geojson = json.loads(ff.read())
+        flowpaths_path = f"{config_directory}/flowpath_{state}_4326.geojson"
+        with open(flowpaths_path) as ff: 
+            flowpaths_geojson = json.loads(ff.read())
 
         flowpaths_layer = self.build_geojson_layer(
             geojson=flowpaths_geojson,
@@ -144,23 +143,23 @@ class MapLayoutTutorialMap(MapLayout):
         )
 
         # USGS stations - from AWS s3
-        stations_path = f"GeoJSON/StreamStats_{state}_4326.geojson" #will need to change the filename to have state before 4326
-        obj = s3.Object(BUCKET_NAME, stations_path)
-        stations_geojson = json.load(obj.get()['Body']) 
+        # stations_path = f"GeoJSON/StreamStats_{state}_4326.geojson" #will need to change the filename to have state before 4326
+        # obj = s3.Object(BUCKET_NAME, stations_path)
+        # stations_geojson = json.load(obj.get()['Body']) 
 
-        #stations_path = f"{config_directory}/StreamStats_{state}_4326.geojson"
-        #with open(stations_path) as ff: 
-         #   stations_geojson = json.loads(ff.read())
+        # #stations_path = f"{config_directory}/StreamStats_{state}_4326.geojson"
+        # #with open(stations_path) as ff: 
+        #  #   stations_geojson = json.loads(ff.read())
 
-        stations_layer = self.build_geojson_layer(
-            geojson=stations_geojson,
-            layer_name='USGS Stations',
-            layer_title='USGS Station',
-            layer_variable='stations',
-            visible=True,
-            selectable=True,
-            plottable=True,
-        )
+        # stations_layer = self.build_geojson_layer(
+        #     geojson=stations_geojson,
+        #     layer_name='USGS Stations',
+        #     layer_title='USGS Station',
+        #     layer_variable='stations',
+        #     visible=True,
+        #     selectable=True,
+        #     plottable=True,
+        # )
 
         # Create layer groups
         layer_groups = [
@@ -169,7 +168,7 @@ class MapLayoutTutorialMap(MapLayout):
                 display_name='NextGen Features',
                 layer_control='checkbox',  # 'checkbox' or 'radio'
                 layers=[
-                    stations_layer,
+                    # stations_layer,
                     #nexus_layer,
                     flowpaths_layer,
                     #catchments_layer
@@ -373,6 +372,63 @@ class MapLayoutTutorialMap(MapLayout):
             today_button=False, 
             initial='June 11, 2019'
         )
+        select_states = SelectInput(display_text='Select State',
+                                    name='select_state',
+                                    multiple=False,
+                                    options=[("Alaska", "AK"),
+    ("Alabama", "AL"),
+    ("Arizona", "AZ"),
+    ("Arkansas", "AR"),
+    ("California", "CA"),
+    ("Colorado", "CO"),
+    ("Connecticut", "CT"),
+    ("Delaware", "DE"),
+    ("Florida", "FL"),
+    ("Georgia", "GA"),
+    ("Hawaii", "HI"),
+    ("Idaho", "ID"),
+    ("Illinois", "IL"),
+    ("Indiana", "IN"),
+    ("Iowa", "IA"),
+    ("Kansas", "KS"),
+    ("Kentucky", "KY"),
+    ("Louisiana", "LA"),
+    ("Maine", "ME"),
+    ("Maryland", "MD"),
+    ("Massachusetts", "MA"),
+    ("Michigan", "MI"),
+    ("Minnesota", "MN"),
+    ("Mississippi", "MS"),
+    ("Missouri", "MO"),
+    ("Montana", "MT"),
+    ("Nebraska", "NE"),
+    ("Nevada", "NV"),
+    ("New Hampshire", "NH"),
+    ("New Jersey", "NJ"),
+    ("New Mexico", "NM"),
+    ("New York", "NY"),
+    ("North Carolina", "NC"),
+    ("North Dakota", "ND"),
+    ("Ohio", "OH"),
+    ("Oklahoma", "OK"),
+    ("Oregon", "OR"),
+    ("Pennsylvania", "PA"),
+    ("Rhode Island", "RI"),
+    ("South Carolina", "SC"),
+    ("South Dakota", "SD"),
+    ("Tennessee", "TN"),
+    ("Texas", "TX"),
+    ("Utah", "UT"),
+    ("Vermont", "VT"),
+    ("Virginia", "VA"),
+    ("Washington", "WA"),
+    ("West Virginia", "WV"),
+    ("Wisconsin", "WI"),
+    ("Wyoming", "WY")
+   ],
+                                    initial=['Alabama'],
+                                    select2_options={'placeholder': 'Select a State',
+                                                    'allowClear': True})
 
         # Call Super
         context = super().get_context(
@@ -381,7 +437,8 @@ class MapLayoutTutorialMap(MapLayout):
             **kwargs
         )
         context['start_date_picker'] = start_date_picker  
-        context['end_date_picker'] = end_date_picker  
+        context['end_date_picker'] = end_date_picker
+        context['select_states'] = select_states
         #print(context)
         return context
         #return render(request, 'map_layout_tutorial/roset_view.html', context)
