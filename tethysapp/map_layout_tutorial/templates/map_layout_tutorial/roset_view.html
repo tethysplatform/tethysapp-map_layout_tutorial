@@ -9,7 +9,9 @@
   {% block after_nav_header %}
   <!--<form method="get" action="roset_dates/"-->
   <br>
-  
+
+  {% gizmo SelectInput state_id %}
+  {% gizmo SelectInput model_id %}
   {% gizmo date_picker start_date_picker %}
   {% gizmo date_picker end_date_picker %}
   <button class="btn btn-primary" id="btn-id">Update Data</button>

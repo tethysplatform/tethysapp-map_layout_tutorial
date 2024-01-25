@@ -31,12 +31,15 @@ let csrftoken = getCookie('csrftoken');
 document.getElementById("btn-id").addEventListener('click',function(){
     let start_date = document.getElementById("start-date").value
     let end_date = document.getElementById("end-date").value
+    let state_id = document.getElementById("state_id").value
+    let model_id = document.getElementById("model_id").value
     // dropdwon id --> value
     var data = new URLSearchParams();
     data.append('method', 'update_data');
     data.append('start_date', start_date);
     data.append('end_date', end_date);
-    data.append('state_id', 'random_id');
+    data.append('state_id', state_id);
+    data.append('model_id', model_id);
     //make the function here
     fetch(".", {
         method: 'POST',

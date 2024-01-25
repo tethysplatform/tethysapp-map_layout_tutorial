@@ -15,14 +15,17 @@ from botocore.client import Config
 #Date picker
 from tethys_sdk.gizmos import DatePicker
 from django.shortcuts import render
-from tethys_sdk.gizmos import DatePicker
+from tethys_sdk.gizmos import DatePicker, SelectInput
 import datetime
 from django.http import JsonResponse
 
+#Connect web pages
+from django.http import HttpResponse
+
 HOME = os.getcwd()
 MODEL_OUTPUT_FOLDER_NAME = 'sample_nextgen_data'
-INIT_DATE='1/1/2019' 
-END_DATE='6/11/2019'
+#INIT_DATE='1/1/2019' 
+#END_DATE='6/11/2019'
 
 #Connect to AWS s3 for data
 #home = Path(app_workspace.path) #"./workspaces/app_workspace"
@@ -47,12 +50,19 @@ class MapLayoutTutorialMap(MapLayout):
     map_title = 'Research Oriented Streamflow Evaluation Toolset'
     map_subtitle = 'An open-source hydrological model evaluation tool for NHDPlus models'
     basemaps = ['OpenStreetMap', 'ESRI']
-    default_map_extent = [-87.83371926334216, 33.73443611122197, -86.20833410475134, 34.456557011634175]
-    max_zoom = 14
-    min_zoom = 9
+    default_map_extent = [-73.555665, 42.053811, -71.6359, 41.10654]
+    max_zoom = 16
+    min_zoom = 1
     show_properties_popup = True
     plot_slide_sheet = True
     template_name = 'map_layout_tutorial/roset_view.html'
+
+    def __init__(self):
+        self.startdate= '1-1-2019'
+        self.enddate='12-30-2019'
+        self.modelid= 'NWMv2.1'
+        self.stateid= 'CT'
+
 
     def update_data(self, request, *args, **kwargs):
         """
@@ -60,10 +70,45 @@ class MapLayoutTutorialMap(MapLayout):
         """
         #  = request.POST
         
-        INIT_DATE=request.POST.get('start_date')
-        END_DATE=request.POST.get('end_date')
+        self.startdate=request.POST.get('start_date')
+        self.enddate=request.POST.get('end_date')
+        self.modelid=request.POST.get('model_id')
+        self.stateid=request.POST.get('state_id')
 
-        print(INIT_DATE,END_DATE)
+        print(self.startdate,self.enddate, self.stateid, self.modelid)
+ 
+        # Create layer groups
+         # flowpaths - from AWS s3
+        flowpaths_path = f"GeoJSON/flowpath_{self.stateid}_4326.geojson"
+        obj = s3.Object(BUCKET_NAME, flowpaths_path)
+        flowpaths_geojson = json.load(obj.get()['Body']) 
+
+
+        flowpaths_layer = self.build_geojson_layer(
+            geojson=flowpaths_geojson,
+            layer_name='flowpaths',
+            layer_title='Flowpaths',
+            layer_variable='flowpaths',
+            visible=True,
+            selectable=True,
+            plottable=True,
+        )
+
+        # USGS stations - from AWS s3
+        stations_path = f"GeoJSON/StreamStats_{self.stateid}_4326.geojson" #will need to change the filename to have state before 4326
+        obj = s3.Object(BUCKET_NAME, stations_path)
+        stations_geojson = json.load(obj.get()['Body']) 
+
+        stations_layer = self.build_geojson_layer(
+            geojson=stations_geojson,
+            layer_name='USGS Stations',
+            layer_title='USGS Station',
+            layer_variable='stations',
+            visible=True,
+            selectable=True,
+            plottable=True,
+        )
+
         # Create layer groups
         layer_groups = [
             self.build_layer_group(
@@ -71,15 +116,19 @@ class MapLayoutTutorialMap(MapLayout):
                 display_name='NextGen Features',
                 layer_control='checkbox',  # 'checkbox' or 'radio'
                 layers=[
-                    #catchments_layer
+                    stations_layer,
+                    flowpaths_layer,
                     
                 ]
             )
         ]
-        # update the map respectively
-        ...
-        return JsonResponse({'success': True})
+        print(stations_layer)
 
+        #self.compose_layers(request, map_view, app_workspace, *args, **kwargs)
+        ...
+        #return JsonResponse({'success': True})
+        #return render(request, 'map_layout_tutorial/roset_view.html', layer_groups)
+        return HttpResponse(layer_groups)
 
     def compose_layers(self, request, map_view, app_workspace, *args, **kwargs): #can we select the geojson files from the input fields (e.g: AL, or a dropdown)
         """
@@ -90,7 +139,8 @@ class MapLayoutTutorialMap(MapLayout):
         # Load GeoJSON from files
         config_directory = Path(app_workspace.path) / MODEL_OUTPUT_FOLDER_NAME / 'config'
 
-        state = 'MS' 
+        #state = 'CT' 
+        print(self.startdate,self.enddate, self.stateid, self.modelid)
         
         ''' Change the below nexus points and catchment files if you want to add them to the app interface
         # Nexus Points
@@ -125,7 +175,7 @@ class MapLayoutTutorialMap(MapLayout):
         )
         '''
         # flowpaths - from AWS s3
-        flowpaths_path = f"GeoJSON/flowpath_{state}_4326.geojson"
+        flowpaths_path = f"GeoJSON/flowpath_{self.stateid}_4326.geojson"
         obj = s3.Object(BUCKET_NAME, flowpaths_path)
         flowpaths_geojson = json.load(obj.get()['Body']) 
         
@@ -144,7 +194,7 @@ class MapLayoutTutorialMap(MapLayout):
         )
 
         # USGS stations - from AWS s3
-        stations_path = f"GeoJSON/StreamStats_{state}_4326.geojson" #will need to change the filename to have state before 4326
+        stations_path = f"GeoJSON/StreamStats_{self.stateid}_4326.geojson" #will need to change the filename to have state before 4326
         obj = s3.Object(BUCKET_NAME, stations_path)
         stations_geojson = json.load(obj.get()['Body']) 
 
@@ -358,30 +408,107 @@ class MapLayoutTutorialMap(MapLayout):
             display_text='Start Date',
             autoclose=False,
             format='MM d, yyyy',
-            start_date='1/1/2019',
+            start_date='1/1/1980',
+            end_date= '12/30/2020',
             start_view='year',
             today_button=False, 
             initial='January 1, 2019'
-        )
+        ) 
         end_date_picker = DatePicker( 
             name='end-date',
             display_text='End Date',
-            start_date='6/11/2019',
+            start_date='1/1/1980',
+            end_date= '12/30/2020',
             autoclose=False,
             format='MM d, yyyy',
             start_view='year',
             today_button=False, 
             initial='June 11, 2019'
         )
+        state_id = SelectInput(display_text='Select State',
+                                    name='state_id',
+                                    multiple=False,
+                                    options=[("Alaska", "AK"),
+                                            ("Alabama", "AL"),
+                                            ("Arizona", "AZ"),
+                                            ("Arkansas", "AR"),
+                                            ("California", "CA"),
+                                            ("Colorado", "CO"),
+                                            ("Connecticut", "CT"),
+                                            ("Delaware", "DE"),
+                                            ("Florida", "FL"),
+                                            ("Georgia", "GA"),
+                                            ("Hawaii", "HI"),
+                                            ("Idaho", "ID"),
+                                            ("Illinois", "IL"),
+                                            ("Indiana", "IN"),
+                                            ("Iowa", "IA"),
+                                            ("Kansas", "KS"),
+                                            ("Kentucky", "KY"),
+                                            ("Louisiana", "LA"),
+                                            ("Maine", "ME"),
+                                            ("Maryland", "MD"),
+                                            ("Massachusetts", "MA"),  
+                                            ("Michigan", "MI"),
+                                            ("Minnesota", "MN"),
+                                            ("Mississippi", "MS"),
+                                            ("Missouri", "MO"),
+                                            ("Montana", "MT"),
+                                            ("Nebraska", "NE"),
+                                            ("Nevada", "NV"),
+                                            ("New Hampshire", "NH"),
+                                            ("New Jersey", "NJ"),
+                                            ("New Mexico", "NM"),
+                                            ("New York", "NY"),
+                                            ("North Carolina", "NC"),
+                                            ("North Dakota", "ND"),
+                                            ("Ohio", "OH"),
+                                            ("Oklahoma", "OK"),
+                                            ("Oregon", "OR"),
+                                            ("Pennsylvania", "PA"),
+                                            ("Rhode Island", "RI"),
+                                            ("South Carolina", "SC"),
+                                            ("South Dakota", "SD"),
+                                            ("Tennessee", "TN"),
+                                            ("Texas", "TX"),
+                                            ("Utah", "UT"),
+                                            ("Vermont", "VT"),
+                                            ("Virginia", "VA"),
+                                            ("Washington", "WA"),
+                                            ("West Virginia", "WV"),   
+                                            ("Wisconsin", "WI"),  
+                                            ("Wyoming", "WY")
+                                        ],
+                                    initial=['Connecticut'],
+                                    select2_options={'placeholder': 'Select a State',
+                                                    'allowClear': True})
+        
+        model_id = SelectInput(display_text='Select Model',
+                                    name='model_id',
+                                    multiple=False,
+                                    options=[
+                                            ("National Water Model v2.1", "NWM_v2.1"),
+                                            ("National Water Model v3.0", "NWM_v3.0"),
+                                            ("NWM MLP extension", "MLP"),
+                                            ("NWM XGBoost extension", "XGBoost"),
+                                            ("NWM CNN extension", "CNN"),
+                                            ("NWM LSTM extension", "LSTM"),
+                                        
+                                            ],
+                                    initial=['National Water Model v2.1'],
+                                    select2_options={'placeholder': 'Select a model',
+                                                    'allowClear': True})
 
-        # Call Super
+        # Call Super   
         context = super().get_context(
-            request,
-            *args,
+            request,  
+            *args, 
             **kwargs
         )
         context['start_date_picker'] = start_date_picker  
-        context['end_date_picker'] = end_date_picker  
+        context['end_date_picker'] = end_date_picker 
+        context['state_id'] = state_id
+        context['model_id'] = model_id
         #print(context)
         return context
         #return render(request, 'map_layout_tutorial/roset_view.html', context)
