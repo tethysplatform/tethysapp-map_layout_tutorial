@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-import pandas as pd
+import pandas as pd 
 
 from tethys_sdk.layouts import MapLayout
 from tethys_sdk.routing import controller
@@ -8,27 +8,29 @@ from .app import MapLayoutTutorial as app
 
 #functions to load AWS data
 import boto3
-import os
+import os   
 from botocore import UNSIGNED
-from botocore.client import Config
-
+from botocore.client import Config 
+ 
 #Date picker
 from tethys_sdk.gizmos import DatePicker, SelectInput
-from django.shortcuts import render
-import datetime
+from django.shortcuts import render 
+import datetime  
 from django.http import JsonResponse
-
+ 
 HOME = os.getcwd()
+print(HOME)
 MODEL_OUTPUT_FOLDER_NAME = 'sample_nextgen_data'
-INIT_DATE='1/1/2019' 
-END_DATE='6/11/2019'
+CONFIG_DIRECTORY = f"{HOME}/tethysapp/map_layout_tutorial/workspaces/app_workspace/{MODEL_OUTPUT_FOLDER_NAME}/config"
+INIT_DATE='1/1/2019'  
+END_DATE='6/11/2019'   
 
 #Connect to AWS s3 for data
 #home = Path(app_workspace.path) #"./workspaces/app_workspace"
 KEYPATH = f"{HOME}/tethysapp/map_layout_tutorial/AWSaccessKeys.csv"
 ACCESS = pd.read_csv(KEYPATH)
-#start session
-SESSION = boto3.Session(
+#start session    
+SESSION = boto3.Session( 
     aws_access_key_id=ACCESS['Access key ID'][0],
     aws_secret_access_key=ACCESS['Secret access key'][0],
 )
@@ -38,10 +40,10 @@ BUCKET_NAME = 'streamflow-app-data'
 BUCKET = s3.Bucket(BUCKET_NAME) 
 S3 = boto3.resource('s3', config=Config(signature_version=UNSIGNED))
 
-
+ 
 @controller(name="home", app_workspace=True)
 class MapLayoutTutorialMap(MapLayout):
-    app = app
+    app = app 
     base_template = 'map_layout_tutorial/base.html'
     map_title = 'Research Oriented Streamflow Evaluation Toolset'
     map_subtitle = 'An open-source hydrological model evaluation tool for NHDPlus models'
@@ -53,7 +55,7 @@ class MapLayoutTutorialMap(MapLayout):
     plot_slide_sheet = True
     template_name = 'map_layout_tutorial/roset_view.html'
     show_map_clicks = True
-    show_map_click_popup = True
+    show_map_click_popup = True 
 
 
 
@@ -62,19 +64,33 @@ class MapLayoutTutorialMap(MapLayout):
         Custom REST method for updating data form Map Layout view.
         """
         #  = request.POST
-        # breakpoint()
+        # breakpoint()  
+        #get user input dates
         INIT_DATE=request.POST.get('start_date')
         END_DATE=request.POST.get('end_date')
+
+        #Get the state id
         STATE=request.POST.get('state_id')
-        #add model name dropdown
-        # config_directory = Path(app_workspace.path) / MODEL_OUTPUT_FOLDER_NAME / 'config'
+
+        #add model name dropdown   
+        MODEL=request.POST.get('model_name') 
+ 
         # USGS stations - from AWS s3
         stations_path = f"GeoJSON/StreamStats_{STATE}_4326.geojson" #will need to change the filename to have state before 4326
         obj = s3.Object(BUCKET_NAME, stations_path)        
         stations_geojson = json.dumps(json.load(obj.get()['Body']))
-        
-        ...
-        return JsonResponse({'stations_geojson': stations_geojson})
+        #flowpaths - from s3
+        #flowpaths_path = f"GeoJSON/flowpath_{STATE}_4326.geojson"
+        #obj = s3.Object(BUCKET_NAME, flowpaths_path)
+        #flowpaths_geojson = json.dumps(json.load(obj.get()['Body'])) 
+
+        #from - demo config directory to speed up dev
+        flowpaths_path = f"{CONFIG_DIRECTORY}/flowpath_{STATE}_4326.geojson" 
+        with open(flowpaths_path) as ff:  
+            flowpaths_geojson = json.dumps(json.loads(ff.read()))
+          
+        ...   
+        return JsonResponse({'stations_geojson': stations_geojson, 'flowpaths_geojson': flowpaths_geojson})
 
     # def get_data():
         # you get the data
@@ -89,7 +105,7 @@ class MapLayoutTutorialMap(MapLayout):
         # Load GeoJSON from files
         config_directory = Path(app_workspace.path) / MODEL_OUTPUT_FOLDER_NAME / 'config'
 
-        state = 'AL' # note, no data for mississippi
+        state = 'AL' # note, no data for mississippi  
         
         ''' Change the below nexus points and catchment files if you want to add them to the app interface
         # Nexus Points
@@ -170,12 +186,12 @@ class MapLayoutTutorialMap(MapLayout):
                 layers=[
                     # stations_layer,
                     #nexus_layer,
-                    flowpaths_layer,
+                    #flowpaths_layer,
                     #catchments_layer
                     
                 ]
             )
-        ]
+        ] 
         
 
         return layer_groups
@@ -302,9 +318,9 @@ class MapLayoutTutorialMap(MapLayout):
                         'width': 2,
                         'color': 'red'
                     }
-                },
-            ]
-
+                }, 
+            ] 
+ 
 
             return f'{self.model} Modeled and Observed Streamflow at USGS site: "{id}"', data, layout
 
@@ -422,15 +438,31 @@ class MapLayoutTutorialMap(MapLayout):
     ("Vermont", "VT"),
     ("Virginia", "VA"),
     ("Washington", "WA"),
-    ("West Virginia", "WV"),
-    ("Wisconsin", "WI"),
+    ("West Virginia", "WV"),   
+    ("Wisconsin", "WI"),  
     ("Wyoming", "WY")
    ],
                                     initial=['Alabama'],
                                     select2_options={'placeholder': 'Select a State',
                                                     'allowClear': True})
+        
+        select_model = SelectInput(display_text='Select Model',
+                                    name='select_model',
+                                    multiple=False,
+                                    options=[
+    ("National Water Model v2.1", "NWM_v2.1"),
+    ("National Water Model v3.0", "NWM_v3.0"),
+    ("NWM MLP extension", "MLP"),
+    ("NWM XGBoost extension", "XGBoost"),
+    ("NWM CNN extension", "CNN"),
+    ("NWM LSTM extension", "LSTM"),
+ 
+   ],
+                                    initial=['National Water Model v2.1'],
+                                    select2_options={'placeholder': 'Select a model',
+                                                    'allowClear': True})
 
-        # Call Super
+        # Call Super 
         context = super().get_context(
             request,
             *args,
@@ -439,6 +471,7 @@ class MapLayoutTutorialMap(MapLayout):
         context['start_date_picker'] = start_date_picker  
         context['end_date_picker'] = end_date_picker
         context['select_states'] = select_states
+        context['select_model'] = select_model
         #print(context)
         return context
         #return render(request, 'map_layout_tutorial/roset_view.html', context)
