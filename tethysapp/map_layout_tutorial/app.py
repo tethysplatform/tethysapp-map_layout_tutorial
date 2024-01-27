@@ -9,7 +9,7 @@ class MapLayoutTutorial(TethysAppBase):
     name = 'Community Streamflow Evaluation System (CSES)'
     package = 'map_layout_tutorial'  # WARNING: Do not change this value
     index = 'home'
-    icon = f'{package}/images/CSES_eval.jpg'
+    icon = f'{package}/images/CSESoverviewImage.JPG' 
     root_url = 'map-layout-tutorial'
     color = '#003087'
  

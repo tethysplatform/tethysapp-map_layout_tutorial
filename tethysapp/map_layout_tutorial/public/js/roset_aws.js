@@ -53,8 +53,9 @@ document.getElementById("btn-id").addEventListener('click',function(){
 
     let start_date = document.getElementById("start-date").value
     let end_date = document.getElementById("end-date").value
-    let state_value = document.getElementById("select_state").value
-    let model_name = document.getElementById("select_model").value
+
+    let state_id = document.getElementById("state_id").value
+    let model_id = document.getElementById("model_id").value
     let ol_map = TETHYS_MAP_VIEW.getMap();
     
     // dropdwon id --> value
@@ -64,6 +65,7 @@ document.getElementById("btn-id").addEventListener('click',function(){
     data.append('end_date', end_date);
     data.append('state_id', state_value);
     data.append('model_id', model_name);
+
     //make the function here
     fetch(".", {
         method: 'POST',
