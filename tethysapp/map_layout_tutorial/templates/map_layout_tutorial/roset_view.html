@@ -10,11 +10,20 @@
   <!--<form method="get" action="roset_dates/"-->
   <br>
 
-  {% gizmo SelectInput state_id %}
-  {% gizmo SelectInput model_id %}
-  {% gizmo date_picker start_date_picker %}
-  {% gizmo date_picker end_date_picker %}
-  <button class="btn btn-primary" id="btn-id">Update Data</button>
+  <form action="{% url 'map_layout_tutorial:roset_view' %}" method="get">
+    <p>Select a region from the dropdown below to view timeseries and an interactive map.</p>
+    <div style="width:100%">{% gizmo SelectInput state_id %}</div>
+    <div style="width:100%">{% gizmo SelectInput model_id %}</div>
+    <div style="width:100%">{% gizmo date_picker start_date_picker %}</div>
+    <div style="width:100%">{% gizmo date_picker end_date_picker %}</div>
+    <span class="btn-group ">
+        <a name="submit-go-to-map" class="btn btn-success" role="button" onclick="document.forms[0].submit();">
+            <span class="glyphicon glyphicon-play"></span>Update Data
+        </a>
+    </span>
+</form>
+
+
   
   <!--</form>
 
