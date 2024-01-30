@@ -12,6 +12,8 @@ import boto3
 import os
 from botocore import UNSIGNED 
 from botocore.client import Config
+import os
+os.environ['AWS_NO_SIGN_REQUEST'] = 'YES'
 
 #Date picker
 from tethys_sdk.gizmos import DatePicker
@@ -586,34 +588,158 @@ class MapLayoutTutorialMapRosetHUC(MapLayout):
         context['huc_ids'] = huc_ids
         context['model_id'] = model_id
         return context
+    '''
+    Get WBD HUC data, how to add in multiple hucs at once from same HU?
+    '''
+    def Join_WBD_StreamStats(self, HUCid):
+        try:
+            #Get HUC level
+            HUC_length = 'huc'+str(len(HUCid[0]))
+
+            #columns to keep
+            HUC_cols = ['areaacres', 'areasqkm', 'states', HUC_length, 'name', 'shape_Length', 'shape_Area', 'geometry']
+            HUC_Geo = gpd.GeoDataFrame(columns = HUC_cols, geometry = 'geometry')
+
+            for h in HUCid:
+                HU = h[:2]
+                HUCunit = 'WBDHU'+str(len(h))       
+                filepath = f"s3://{BUCKET_NAME}/WBD/WBD_{HU}_HU2_GDB/WBD_{HU}_HU2_GDB.gdb/"
+                HUC_G = gpd.read_file(filepath, layer=HUCunit)
+    
+                #select HUC
+                HUC_G = HUC_G[HUC_G[HUC_length] == h] 
+                HUC_G = HUC_G[HUC_cols]
+                HUC_Geo = pd.concat([HUC_Geo,HUC_G])
+
+            #Load streamstats wiht lat long to get geolocational information
+            csv_key = 'Streamstats/Streamstats.csv'
+            obj = BUCKET.Object(csv_key)
+            body = obj.get()['Body']
+            Streamstats = pd.read_csv(body)
+            Streamstats.pop('Unnamed: 0')
+            Streamstats.drop_duplicates(subset = 'NWIS_site_id', inplace = True)
+            Streamstats.reset_index(inplace = True, drop = True)
+
+            #Convert to geodataframe
+            StreamStats = gpd.GeoDataFrame(Streamstats, geometry=gpd.points_from_xy(Streamstats.dec_long_va, Streamstats.dec_lat_va))
+            
+            #the csv loses the 0 in front of USGS ids, fix
+            NWIS = list(Streamstats['NWIS_site_id'].astype(str))
+            Streamstats['NWIS_site_id'] = ["0"+str(i) if len(i) <8 else i for i in NWIS]        
+
+            print('Finding NWIS monitoring stations within ', HUCid, ' watershed boundary')
+            # Join StreamStats with HUC
+            sites = StreamStats.sjoin(HUC_Geo, how = 'inner', predicate = 'intersects')
+            
+            #Somehow duplicate rows occuring, fix added
+            sites =  sites.drop_duplicates()
+            #takes rows with site name
+            sites = sites[sites['NWIS_sitename'].notna()] 
+
+            #get list of sites
+            reach_ids = list(set(list(sites['NWIS_site_id'])))
+            reach_ids = [str(reach) for reach in reach_ids]
+
+            #get list of states to request geojson files
+            stateids = list(set(list(sites['state_id'])))
+
+            stationpaths = []
+            for state in stateids:
+                stations_path = f"GeoJSON/StreamStats_{state}_4326.geojson" #will need to change the filename to have state before 4326
+                stationpaths.append(stations_path)
+
+            #combine stations
+            combined = self.combine_jsons(stationpaths)
+            
+
+            #get site ids out of DF to make new geojson
+            finaldf = gpd.GeoDataFrame()
+            for site in reach_ids:
+                df = combined[combined['USGS_id'] == site]
+                finaldf = pd.concat([finaldf, df])
+
+            #reset index and drop any duplicates
+            finaldf.reset_index(inplace = True, drop = True)
+            finaldf.drop_duplicates('USGS_id', inplace = True)       
+
+            return finaldf
+
+        except KeyError:
+            print('No monitoring stations in this HUC')
+
+     #function for getting reachids -- this could likely be placed into a utils.py file...
+    def combine_jsons(self,file_list):
+
+        all_data_df = gpd.GeoDataFrame()
+        for json_file in file_list:
+            obj = s3.Object(BUCKET_NAME, json_file)
+            gdf = gpd.read_file(obj.get()['Body'], driver='GeoJSON')
+            all_data_df = pd.concat([all_data_df, gdf]).set_crs(crs= 'EPSG:4326')
+
+        return all_data_df
+    
+    def reach_json(self,reach_ids):
+        csv_key = 'Streamstats/Streamstats.csv'
+        obj = BUCKET.Object(csv_key)
+        body = obj.get()['Body']
+        Streamstats = pd.read_csv(body)
+        Streamstats.pop('Unnamed: 0')
+        Streamstats.drop_duplicates(subset = 'NWIS_site_id', inplace = True)
+        Streamstats.reset_index(inplace = True, drop = True)
+
+        #Convert to geodataframe
+        StreamStats = gpd.GeoDataFrame(Streamstats, geometry=gpd.points_from_xy(Streamstats.dec_long_va, Streamstats.dec_lat_va))
+
+        #the csv loses the 0 in front of USGS ids, fix
+        NWIS = list(Streamstats['NWIS_site_id'].astype(str))
+        Streamstats['NWIS_site_id'] = ["0"+str(i) if len(i) <8 else i for i in NWIS]  
+
+        #Get streamstats information for each USGS location
+        sites = pd.DataFrame()
+
+        for site in reach_ids:
+            s = Streamstats[Streamstats['NWIS_site_id'] ==  str(site)]
+            sites = pd.concat([sites, s])
+
+        stateids = list(set(list(sites['state_id'])))
+
+        stationpaths = []
+        for state in stateids:
+            stations_path = f"GeoJSON/StreamStats_{state}_4326.geojson" #will need to change the filename to have state before 4326
+            stationpaths.append(stations_path)
+
+        #combine stations
+        combined = self.combine_jsons(stationpaths)
+        
+
+        #get site ids out of DF to make new geojson
+        finaldf = gpd.GeoDataFrame()
+        for site in reach_ids:
+            df = combined[combined['USGS_id'] == site]
+            finaldf = pd.concat([finaldf, df])
+
+        #reset index and drop any duplicates
+        finaldf.reset_index(inplace = True, drop = True)
+        finaldf.drop_duplicates('USGS_id', inplace = True)        
+
+        return finaldf
 
     def compose_layers(self, request, map_view, app_workspace, *args, **kwargs): #can we select the geojson files from the input fields (e.g: AL, or a dropdown)
         """
         Add layers to the MapLayout and create associated layer group objects.
         """
-     
-        #print(self.startdate,self.enddate, self.stateid, self.modelid)
-
-        print(request)
-
-
         try: 
-            huc_id = request.GET.get('huc_id')
+            huc_id = request.GET.get('huc_ids')
+            huc_id = huc_id.strip('][').split(', ')
             startdate = request.GET.get('start-date')
-            enddate = request.GET.get('end-date')
+            enddate = request.GET.get('end-date')   
             modelid = request.GET.get('model_id')
-            # print(state_id)
-            state_id = 'UT' # temp placeholder to show connections
+            finaldf = self.Join_WBD_StreamStats(huc_id)
     
-            # USGS stations - from AWS s3
-            stations_path = f"GeoJSON/StreamStats_{state_id}_4326.geojson" #will need to change the filename to have state before 4326
-            obj = s3.Object(BUCKET_NAME, stations_path)
-            stations_geojson = json.load(obj.get()['Body']) 
+            map_view['view']['extent'] = list(finaldf.geometry.total_bounds)
+            stations_geojson = json.loads(finaldf.to_json()) 
+            stations_geojson.update({"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" }}})         
 
-            # set the map extend based on the stations
-            gdf = gpd.read_file(obj.get()['Body'], driver='GeoJSON')
-            map_view['view']['extent'] = list(gdf.geometry.total_bounds)
-        
 
             stations_layer = self.build_geojson_layer(
                 geojson=stations_geojson,
@@ -639,21 +765,21 @@ class MapLayoutTutorialMapRosetHUC(MapLayout):
             ]
 
         except: 
-            state_id = 'UT'
-            startdate = '01-01-2019'
+            print('No inputs, going to defaults')
+            #put in some defaults
+            reach_ids = ['10171000', '10166430', '10168000','10164500', '10163000', '10157500','10155500', '10156000', 
+                         '10155200', '10155000', '10154200', '10153100', '10150500', '10149400', '10149000', '10147100', 
+                         '10146400', '10145400', '10172700' ] # These are sites within the Jordan River Watershed
+            startdate = '01-01-2019' 
             enddate = '01-02-2019'
             modelid = 'NWM_v2.1'
-            print(state_id)
-    
-            # USGS stations - from AWS s3
-            stations_path = f"GeoJSON/StreamStats_{state_id}_4326.geojson" #will need to change the filename to have state before 4326
-            obj = s3.Object(BUCKET_NAME, stations_path)
-            stations_geojson = json.load(obj.get()['Body']) 
 
-            # set the map extend based on the stations
-            gdf = gpd.read_file(obj.get()['Body'], driver='GeoJSON')
-            map_view['view']['extent'] = list(gdf.geometry.total_bounds)
-        
+    
+            finaldf = self.reach_json(reach_ids)
+            map_view['view']['extent'] = list(finaldf.geometry.total_bounds)
+            stations_geojson = json.loads(finaldf.to_json()) 
+            stations_geojson.update({"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" }}}) 
+
 
             stations_layer = self.build_geojson_layer(
                 geojson=stations_geojson,
@@ -663,8 +789,8 @@ class MapLayoutTutorialMapRosetHUC(MapLayout):
                 visible=True,
                 selectable=True,
                 plottable=True,
-            )
-
+            ) 
+            
             # Create layer groups
             layer_groups = [
                 self.build_layer_group(
@@ -673,14 +799,13 @@ class MapLayoutTutorialMapRosetHUC(MapLayout):
                     layer_control='checkbox',  # 'checkbox' or 'radio'
                     layers=[
                         stations_layer,
-                    #   flowpaths_layer,
                     ],
                     visible= True
                 )
             ]
 
         return layer_groups
-
+            
 
     @classmethod
     def get_vector_style_map(cls):
