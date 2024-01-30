@@ -5,7 +5,7 @@ import geopandas as gpd
 
 from tethys_sdk.layouts import MapLayout
 from tethys_sdk.routing import controller
-from .app import MapLayoutTutorial as app
+from .app import CSES as app
 
 #functions to load AWS data
 import boto3
@@ -22,19 +22,27 @@ from django.http import JsonResponse
 from django.urls import reverse_lazy
 
 #Connect web pages
-from django.http import HttpResponse
+from django.http import HttpResponse 
 
-HOME = os.getcwd()
-MODEL_OUTPUT_FOLDER_NAME = 'sample_nextgen_data'
+# HOME = os.getcwd()
+# MODEL_OUTPUT_FOLDER_NAME = 'sample_nextgen_data'
 
-#Connect to AWS s3 for data
-#home = Path(app_workspace.path) #"./workspaces/app_workspace"
-KEYPATH = f"{HOME}/tethysapp/map_layout_tutorial/AWSaccessKeys.csv"
-ACCESS = pd.read_csv(KEYPATH)
+# #Connect to AWS s3 for data
+# #home = Path(app_workspace.path) #"./workspaces/app_workspace"
+
+# KEYPATH = f"{HOME}/tethysapp/community_streamflow_evaluation_system/AWSaccessKeys.csv"
+# ACCESS = pd.read_csv(KEYPATH)
+
+ACCESS_KEY_ID = app.get_custom_setting('Access_key_ID')
+ACCESS_KEY_SECRET = app.get_custom_setting('Secret_access_key')
+
+
 #start session
 SESSION = boto3.Session(
-    aws_access_key_id=ACCESS['Access key ID'][0],
-    aws_secret_access_key=ACCESS['Secret access key'][0],
+    aws_access_key_id=ACCESS_KEY_ID,
+    aws_secret_access_key=ACCESS_KEY_SECRET
+    # aws_access_key_id=ACCESS['Access key ID'][0],
+    # aws_secret_access_key=ACCESS['Secret access key'][0],
 )
 s3 = SESSION.resource('s3')
 #AWS bucket information
@@ -78,7 +86,7 @@ def home(request):
         }
 
 
-        return render(request, 'map_layout_tutorial/home.html', context)
+        return render(request, 'community_streamflow_evaluation_system/home.html', context)
 
 
   
@@ -86,14 +94,14 @@ def home(request):
 #Controller for the state class 
 @controller(
     name="roset_state",
-    url="map-layout-tutorial/roset_state",
+    url="roset_state/",
     app_workspace=True,
 )   
-class MapLayoutTutorialMap(MapLayout): 
+class MapLayoutTutorialMapRosetState(MapLayout): 
     # Define base map options
     app = app
-    back_url = reverse_lazy('map_layout_tutorial:home')
-    base_template = 'map_layout_tutorial/base.html'
+    back_url = reverse_lazy('community_streamflow_evaluation_system:home')
+    base_template = 'community_streamflow_evaluation_system/base.html'
     map_title = 'Research Oriented Streamflow Evaluation Toolset'
     map_subtitle = 'An open-source hydrological model evaluation tool for NHDPlus models'
     basemaps = [
@@ -109,7 +117,7 @@ class MapLayoutTutorialMap(MapLayout):
     min_zoom = 1
     show_properties_popup = True  
     plot_slide_sheet = True
-    template_name = 'map_layout_tutorial/roset_state.html' 
+    template_name = 'community_streamflow_evaluation_system/roset_state.html' 
    
     
  
@@ -470,17 +478,17 @@ class MapLayoutTutorialMap(MapLayout):
 # #Controller for the HUC class
 @controller(
     name="roset_huc",
-    url="map-layout-tutorial/roset_huc",
+    url="roset_huc/",
     app_workspace=True,
 )   
-class MapLayoutTutorialMap(MapLayout): 
+class MapLayoutTutorialMapRosetHUC(MapLayout): 
     # Define base map options
     app = app
-    back_url = reverse_lazy('map_layout_tutorial:home')
-    base_template = 'map_layout_tutorial/base.html'
+    back_url = reverse_lazy('community_streamflow_evaluation_system:home')
+    base_template = 'community_streamflow_evaluation_system/base.html'
     map_title = 'Research Oriented Streamflow Evaluation Toolset'
     map_subtitle = 'An open-source hydrological model evaluation tool for NHDPlus models'
-    basemaps = [
+    basemaps = [ 
         {'ESRI': {'layer':'NatGeo_World_Map'}},
         {'ESRI': {'layer':'World_Street_Map'}},
         {'ESRI': {'layer':'World_Imagery'}},
@@ -493,7 +501,7 @@ class MapLayoutTutorialMap(MapLayout):
     min_zoom = 1
     show_properties_popup = True  
     plot_slide_sheet = True
-    template_name = 'map_layout_tutorial/roset_huc.html' 
+    template_name = 'community_streamflow_evaluation_system/roset_huc.html' 
    
     
  
@@ -505,9 +513,9 @@ class MapLayoutTutorialMap(MapLayout):
         self.startdate=request.POST.get('start_date')
         self.enddate=request.POST.get('end_date')
         self.modelid=request.POST.get('model_id')
-        self.stateid=request.POST.get('state_id')
+        self.hucids=request.POST.get('huc_ids')
 
-        print(self.startdate,self.enddate, self.stateid, self.modelid)
+        print(self.startdate,self.enddate, self.hucids, self.modelid)
  
         return JsonResponse({'success': True})
      
@@ -546,63 +554,10 @@ class MapLayoutTutorialMap(MapLayout):
             initial='06-11-2019'
         )
         
-        state_id = SelectInput(display_text='Select State',
-                                    name='state_id',
-                                    multiple=False,
-                                    options=[("Alaska", "AK"),
-                                            ("Alabama", "AL"),
-                                            ("Arizona", "AZ"),
-                                            ("Arkansas", "AR"),
-                                            ("California", "CA"),
-                                            ("Colorado", "CO"),
-                                            ("Connecticut", "CT"),
-                                            ("Delaware", "DE"),
-                                            ("Florida", "FL"),
-                                            ("Georgia", "GA"),
-                                            ("Hawaii", "HI"),
-                                            ("Idaho", "ID"),
-                                            ("Illinois", "IL"),
-                                            ("Indiana", "IN"),
-                                            ("Iowa", "IA"),
-                                            ("Kansas", "KS"),
-                                            ("Kentucky", "KY"),
-                                            ("Louisiana", "LA"),
-                                            ("Maine", "ME"),
-                                            ("Maryland", "MD"),
-                                            ("Massachusetts", "MA"),  
-                                            ("Michigan", "MI"),
-                                            ("Minnesota", "MN"),
-                                            ("Mississippi", "MS"),
-                                            ("Missouri", "MO"),
-                                            ("Montana", "MT"),
-                                            ("Nebraska", "NE"),
-                                            ("Nevada", "NV"),
-                                            ("New Hampshire", "NH"),
-                                            ("New Jersey", "NJ"),
-                                            ("New Mexico", "NM"),
-                                            ("New York", "NY"),
-                                            ("North Carolina", "NC"),
-                                            ("North Dakota", "ND"),
-                                            ("Ohio", "OH"),
-                                            ("Oklahoma", "OK"),
-                                            ("Oregon", "OR"),
-                                            ("Pennsylvania", "PA"),
-                                            ("Rhode Island", "RI"),
-                                            ("South Carolina", "SC"),
-                                            ("South Dakota", "SD"),
-                                            ("Tennessee", "TN"),
-                                            ("Texas", "TX"),
-                                            ("Utah", "UT"),
-                                            ("Vermont", "VT"),
-                                            ("Virginia", "VA"),
-                                            ("Washington", "WA"),
-                                            ("West Virginia", "WV"),   
-                                            ("Wisconsin", "WI"),  
-                                            ("Wyoming", "WY")
-                                        ],
-                                    initial=['Alabama'], #it would be cool to change this depending on the current state input.
-                                    select2_options={'placeholder': 'Select a State',
-                                                    'allowClear': True})
+        huc_ids = TextInput(display_text='Enter a list of HUC regions',
+                                   name='huc_ids', 
+                                   placeholder= 'e.g.: 1602, 1603',
+                                   )
         
         model_id = SelectInput(display_text='Select Model',
                                     name='model_id',
@@ -628,7 +583,7 @@ class MapLayoutTutorialMap(MapLayout):
         )
         context['start_date_picker'] = start_date_picker  
         context['end_date_picker'] = end_date_picker 
-        context['state_id'] = state_id
+        context['huc_ids'] = huc_ids
         context['model_id'] = model_id
         return context
 
@@ -643,11 +598,12 @@ class MapLayoutTutorialMap(MapLayout):
 
 
         try: 
-            state_id = request.GET.get('state_id')
+            huc_id = request.GET.get('huc_id')
             startdate = request.GET.get('start-date')
             enddate = request.GET.get('end-date')
             modelid = request.GET.get('model_id')
-            print(state_id)
+            # print(state_id)
+            state_id = 'UT' # temp placeholder to show connections
     
             # USGS stations - from AWS s3
             stations_path = f"GeoJSON/StreamStats_{state_id}_4326.geojson" #will need to change the filename to have state before 4326
@@ -677,14 +633,13 @@ class MapLayoutTutorialMap(MapLayout):
                     layer_control='checkbox',  # 'checkbox' or 'radio'
                     layers=[
                         stations_layer,
-                    #   flowpaths_layer,
                     ],
                     visible= True
                 )
             ]
 
         except: 
-            state_id = 'AL'
+            state_id = 'UT'
             startdate = '01-01-2019'
             enddate = '01-02-2019'
             modelid = 'NWM_v2.1'
@@ -850,17 +805,19 @@ class MapLayoutTutorialMap(MapLayout):
  
 
 
+
+
 #Controller for the Reach class
 @controller(
     name="roset_reach",
-    url="map-layout-tutorial/roset_reach",
+    url="roset_reach/",
     app_workspace=True,
 )   
-class MapLayoutTutorialMap(MapLayout): 
+class MapLayoutTutorialMapRosetReach(MapLayout): 
     # Define base map options
     app = app
-    back_url = reverse_lazy('map_layout_tutorial:home')
-    base_template = 'map_layout_tutorial/base.html'
+    back_url = reverse_lazy('community_streamflow_evaluation_system:home')
+    base_template = 'community_streamflow_evaluation_system/base.html'
     map_title = 'Research Oriented Streamflow Evaluation Toolset'
     map_subtitle = 'An open-source hydrological model evaluation tool for NHDPlus models'
     basemaps = [
@@ -876,7 +833,7 @@ class MapLayoutTutorialMap(MapLayout):
     min_zoom = 1
     show_properties_popup = True  
     plot_slide_sheet = True
-    template_name = 'map_layout_tutorial/roset_reach.html' 
+    template_name = 'community_streamflow_evaluation_system/roset_reach.html' 
     
  
     def update_data(self, request, *args, **kwargs):
@@ -930,7 +887,7 @@ class MapLayoutTutorialMap(MapLayout):
         
         reach_ids = TextInput(display_text='Enter a list of USGS sites',
                                    name='reach_ids', 
-                                   placeholder= 'e.g.: 10156000, 10146000',
+                                   placeholder= 'e.g.: 10224000, 10219000',
                                    )
 
         model_id = SelectInput(display_text='Select Model',
