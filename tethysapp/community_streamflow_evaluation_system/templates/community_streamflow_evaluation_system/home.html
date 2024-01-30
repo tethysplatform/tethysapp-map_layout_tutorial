@@ -1,4 +1,4 @@
-{% extends "map_layout_tutorial/base.html" %}
+{% extends "community_streamflow_evaluation_system/base.html" %}
 
 {% load static %}
 {% load tethys_gizmos %}
@@ -18,10 +18,12 @@
      </p>
   <br>
 
-  <form action="{% url 'map_layout_tutorial:roset_reach' %}" method="get">
+ 
+
+  <form action="{% url 'community_streamflow_evaluation_system:roset_reach' %}" method="get">
     <p>The REACH evaluation class allows the user to investigate model performance for specific USGS/NWIS locations.</p>
       <span class="btn-group ">
-          <a name="submit-go-to-map" class="btn btn-success" role="button" onclick="document.forms[0].submit();" id="submit-go-to-map">
+          <a name="submit-go-to-map-reach" class="btn btn-success" role="button" onclick="document.forms[0].submit();" id="submit-go-to-map-reach">
               <span class="glyphicon glyphicon-play"></span> Go to REACH class evaluations
           </a>
       </span>
@@ -29,10 +31,10 @@
 
   <br>
 
-<form action="{% url 'map_layout_tutorial:roset_state' %}" method="get">
+<form action="{% url 'community_streamflow_evaluation_system:roset_state' %}" method="get">
   <p>The STATE evaluation class locates all USGS monitoring locations within a state to investigate model performance</p>
     <span class="btn-group ">
-        <a name="submit-go-to-map" class="btn btn-success" role="button" onclick="document.forms[0].submit();" id="submit-go-to-map">
+        <a name="submit-go-to-map-state" class="btn btn-success" role="button" onclick="document.forms[1].submit();" id="submit-go-to-map-state">
             <span class="glyphicon glyphicon-play"></span> Go to STATE class evaluations
         </a>
     </span>
@@ -40,10 +42,10 @@
 
 <br>
 
-<form action="{% url 'map_layout_tutorial:roset_huc' %}" method="get">
+<form action="{% url 'community_streamflow_evaluation_system:roset_huc' %}" method="get">
   <p>The HUC evaluation class locates all USGS monitoring locations within a HUCid to investigate model performance.</p>
     <span class="btn-group ">
-        <a name="submit-go-to-map" class="btn btn-success" role="button" onclick="document.forms[0].submit();" id="submit-go-to-map">
+        <a name="submit-go-to-map" class="btn btn-success" role="button" onclick="document.forms[2].submit();" id="submit-go-to-map">
             <span class="glyphicon glyphicon-play"></span> Go to HUC class evaluations:
         </a>
     </span>
@@ -83,5 +85,5 @@
 {% block scripts %}
   {{ block.super }}
   <!--<script src="{% static 'map_layout_tutorial/js/main.js' %}" type="text/javascript"></script> -->
-  <script src="{% static 'map_layout_tutorial/js/roset_aws.js' %}" type="text/javascript"></script>
+  <!-- <script src="{% static 'map_layout_tutorial/js/roset_aws.js' %}" type="text/javascript"></script> -->
 {% endblock %}
