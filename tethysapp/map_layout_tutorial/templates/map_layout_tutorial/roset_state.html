@@ -10,7 +10,7 @@
   <!--<form method="get" action="roset_dates/"-->
   <br>
   <!---->
-  <form action="{% url 'map_layout_tutorial:roset_view' %}" method="get">
+  <form action="{% url 'map_layout_tutorial:roset_state' %}" method="get">
     <p>Select a region from the dropdown below to view timeseries and an interactive map.</p>
     <div style="width:100%">{% gizmo SelectInput state_id %}</div>
     <div style="width:100%">{% gizmo SelectInput model_id %}</div>
