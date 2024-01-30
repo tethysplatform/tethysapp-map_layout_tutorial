@@ -14,31 +14,45 @@
 
   <h1>Welcome to the Community Streamflow Evaluation System!</h1>
   <script>window.onbeforeunload = null;</script>
-  <p>This app supports and interactive interface to explore hydrological model performance.
-    Begin by selecting the below inputs </p>
- 
- <!--<form method="get" action="roset_dates/"-->
+  <p>This app supports an interactive interface to explore hydrological model performance. Select a model evaluation methodology.
+     </p>
   <br>
-<!--
-  {% gizmo SelectInput state_id %}
-  {% gizmo SelectInput model_id %}
-  {% gizmo date_picker start_date_picker %}
-  {% gizmo date_picker end_date_picker %}
-  <button class="btn btn-primary" id="btn-id">View Results</button>
--->
 
-<form action="{% url 'map_layout_tutorial:roset_view' %}" method="get">
-    <p>Select a region from the dropdown below to view timeseries and an interactive map.</p>
-    <div style="width:45%">{% gizmo SelectInput state_id %}</div>
-    <div style="width:45%">{% gizmo SelectInput model_id %}</div>
-    <div style="width:45%">{% gizmo date_picker start_date_picker %}</div>
-    <div style="width:45%">{% gizmo date_picker end_date_picker %}</div>
+  <form action="{% url 'map_layout_tutorial:roset_reach' %}" method="get">
+    <p>The REACH evaluation class allows the user to investigate model performance for specific USGS/NWIS locations.</p>
+      <span class="btn-group ">
+          <a name="submit-go-to-map" class="btn btn-success" role="button" onclick="document.forms[0].submit();" id="submit-go-to-map">
+              <span class="glyphicon glyphicon-play"></span> Go to REACH class evaluations
+          </a>
+      </span>
+  </form>
+
+  <br>
+
+<form action="{% url 'map_layout_tutorial:roset_state' %}" method="get">
+  <p>The STATE evaluation class locates all USGS monitoring locations within a state to investigate model performance</p>
     <span class="btn-group ">
         <a name="submit-go-to-map" class="btn btn-success" role="button" onclick="document.forms[0].submit();" id="submit-go-to-map">
-            <span class="glyphicon glyphicon-play"></span>View Region
+            <span class="glyphicon glyphicon-play"></span> Go to STATE class evaluations
         </a>
     </span>
 </form>
+
+<br>
+
+<form action="{% url 'map_layout_tutorial:roset_huc' %}" method="get">
+  <p>The HUC evaluation class locates all USGS monitoring locations within a HUCid to investigate model performance.</p>
+    <span class="btn-group ">
+        <a name="submit-go-to-map" class="btn btn-success" role="button" onclick="document.forms[0].submit();" id="submit-go-to-map">
+            <span class="glyphicon glyphicon-play"></span> Go to HUC class evaluations:
+        </a>
+    </span>
+</form>
+
+<br>
+
+
+
 
 {% endblock %}
 
