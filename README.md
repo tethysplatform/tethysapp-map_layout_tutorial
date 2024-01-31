@@ -1,7 +1,7 @@
 
 ![Github_top](https://user-images.githubusercontent.com/33735397/206313977-e67ba652-3340-4a1b-b1d1-141d8d5001f2.PNG)
 
-# Community Streamflow Evaluation System (CSES)
+# Community Streamflow Evaluation System (CSES) - Tethys Web Application
 
 ![GitHub](https://img.shields.io/github/license/whitelightning450/Community-Streamflow-Evaluation-System?logo=GitHub&style=plastic)
 ![GitHub top language](https://img.shields.io/github/languages/top/whitelightning450/Community-Streamflow-Evaluation-System?style=plastic)
@@ -15,20 +15,64 @@
 ![GitHub milestones](https://img.shields.io/github/milestones/open/whitelightning450/Community-Streamflow-Evaluation-System?style=plastic)
 ![GitHub milestones](https://img.shields.io/github/milestones/open/whitelightning450/Community-Streamflow-Evaluation-System?style=plastic)
 
-A Novel Community Streamflow Evaluation System (CSES) to evaluate hydrological model performance using a standardized NHDPlus data model.
-CSES evaluates modeled streamflow to a repository of over 5,000 in situ USGS monitoring sites, with interactive visualizations supporting an in-depth analysis.
+A Novel Community Streamflow Evaluation System (CSES) to evaluate hydrological model performance, currently using a standardized NHDPlus data model.
+CSES evaluates modeled streamflow to over 5,000 in situ USGS monitoring sites, providing interactive visualizations for an in-depth analysis.
 
 ## Application Overview
-National-scale streamflow modeling remains a modern challenge, as changes in the underlying hydrology from land use and land cover (LULC) change, anthropogentic streamflow modification, and general process components (reach length, hydrogeophysical processes, precipitation, temperature, etc) greatly influence  hydrological modeling.
-In a changing climate, there is a need to anticipate flood intensity, impacts of groundwater depletion on streamflow, western mountain low-flow events, eastern rain-on-snow events, storm-induced flooding, and other severe environmental problems that challenge the management of water resources.
-Given the National Water Model (NWM) bridges the gap between the spatially coarse USGS streamflow observations by providing a near-continuous 2.7 million reach predictions of streamflow using the standardized NHDPlus framework, there lies the potential to improve upon the capabilities of the model by characterizing predictive performance across the heterogeneity of processes and land covers present at the national scale. 
-The python-based Community-Streamflow-Evaluation-System package provides a foundation to evaluate national hydrography dataset (nhd) based model outputs with colocated USGS/NWIS streamflow monitoring stations (parameter: 060) without the need to download in-situ or NWM v2.1 data (NWM v3.0 coming soon!). 
-The package contains three key methods for evaluation: state-based LULC, HUC level analysis, and USGS station-based analysis.
-Below is a description of each method and application.
-Designed to assess NWM version 2.1 retrospective performance, by using the exemplified data model the tool can evaluate other model predictions, with the motivation to improve regionally dominant hydrological modeling skill.
-By using Community-Streamflow-Evaluation-System, researchers can identify locations where a model may benefit from further training/calibration/parameterization or a need for new model processes/features (e.g., integration of reservoir release operations) to ultimately create new post-processing methods and/or hydrological modeling formulations to improve streamflow prediction capabilities with respect to modeling needs (e.g., stormflow, supply, emergency management, flooding, etc).   
+Given the launch of the [Cooperative Institute for Research to Operations in Hydrology (CIROH)](https://ciroh.ua.edu/) in April, 2020, CIROH scientists from 28 different academic, government, and private are working to improve the understanding of hydrologic processes, operational hydrologic forecasting techniques and workflows, community water modeling, translation of forecasts to actionable products, and use of water predictions in decision making.
+National-scale streamflow modeling remains a modern challenge, as changes in the underlying hydrology from land use and land cover (LULC) change, anthropogentic streamflow modification, and general process components (reach length, hydrogeophysical processes, precipitation, temperature, etc) greatly influence hydrological modeling.
+To benchmark model performance, characterize improvements in hydrological modeling formuations, and generate reproducible science, the team at the [Alabama Water Institute (AWI)](https://awi.ua.edu/) developed CSES to originally characterize the water supply forecasting skill of the National Water Model v2.1 in the Great Salt Lake Basin. 
+The tool quickly scaled and with the support of the [Earth Science Information Partners (ESIP)](https://www.esipfed.org/), provided an opportunity to turn the novel evaluation platform into a web application.
+This GitHub repository contains the code to create an innovative [Tethys Web Platform](https://www.tethysplatform.org/) to share our reseach tools with the great research and operational hydrological community.
+By using Community-Streamflow-Evaluation-System, researchers and practitioners can interact with model outputs and evaluate the performance of hydrological models (current the NWM) for their region.
 
-### Data Access
+### State Evaluation Methods
+![StateEval](./Images/StateEval.JPG)
+
+The State_Controller.py file is the core of the State Evaluation methods. 
+The evaluation class defaults to the great state of Alabama and the National Water Model v2.1 retrospective dataset, which is a fully functional page supporting interactivity to explore model performance.
+
+Want to explore different states and date ranges, select a state from the dropdown, a different model (note, these models only work for a limited number of sites within the Great Salt Lake at the moment), and a date range of interest.
+We suggest a date range no longer than 1-year, as longer ranges take much longer to load.
+No plot showing, there likely is no model or observational data for the inputs, try a differnt location!
+
+### Reach Evaluation Methods
+![ReachEval](./Images/ReachEval.JPG)
+
+The Reach_Controller.py file is the core of the Reach Evaluation methods. 
+The evaluation class defaults to a select number of NWIS sites in southern Utah and the National Water Model v2.1 retrospective dataset.
+
+Want to explore different reaches and date ranges, inputs a reach or list of reaches separated with commas into the text inputs, a model (note, these models only work for a limited number of sites within the Great Salt Lake at the moment), and a date range of interest.
+We suggest a date range no longer than 1-year, as longer ranges take much longer to load.
+No plot showing, there likely is no model or observational data for the inputs, try a differnt location!
+
+
+### HUCid Evaluation Methods
+![HUCEval](./Images/HUCEval.JPG)
+
+The HUC_Controller.py file is the core of the HUC Evaluation methods. 
+The evaluation class defaults to the Jordan River Basin in northern Utah and the National Water Model v2.1 retrospective dataset.
+
+Want to explore different HUCs and date ranges, inputs a hucid or list of hucids separated with commas into the text inputs, a model (note, these models only work for a limited number of sites within the Great Salt Lake at the moment), and a date range of interest.
+We suggest a date range no longer than 1-year, as longer ranges take much longer to load.
+No plot showing, there likely is no model or observational data for the inputs, try a differnt location!
+
+
+### Data 
 Community-Streamflow-Evaluation-System leverages USGS/NWIS observations from 1980-2020 and colocated and while all data is publically available through the respective agencies, we found the download time to be preventative for a timely model evaluation. 
 The Alabama Water Institute at the University of Alabama hosts NWM v2.1 retrospective for all colocated USGS monitoring stations at a daily temporal resolution and provides the data free of charge via access to Amazon AWS S3 cloud storage.
 Community-Streamflow-Evaluation-System can quickly access observed and predicted data supporting a fast and repeatable tool for evaluating modeled streamflow performance.
+
+## Looking for the research-focused CSES?
+The python-based [Community-Streamflow-Evaluation-System](https://github.com/whitelightning450/Community-Streamflow-Evaluation-System) package provides a foundation to evaluate national hydrography dataset (nhd) based model outputs with colocated USGS/NWIS streamflow monitoring stations (parameter: 060) without the need to download in-situ or NWM v2.1 data (NWM v3.0 coming soon!). 
+The package is similar to the web application but supports a hands-on approach to model evaluation, such as providing a template and data model for researchers to evaluate their model.
+
+## Want to see your model in the App?
+Please reach out the AWI team so we can put your model results in our AWS S3 database.
+We currently have a simple data model and are looking into more computationally effient methods to expedite interactivity and the overall hydrological evaluation experience.
+
+## Want to contribute?
+Reach out to the AWI team and we can identify meaningful areas to grow CSES.
+Community is in the name for a reason and we intende to integrate more hydrological modeling components into the tool kit as funding allows.
+Specific areas of contribution include snow, atmospheric forcings, and other model outputs.
+Let's advance the community modeling paradigm together!
