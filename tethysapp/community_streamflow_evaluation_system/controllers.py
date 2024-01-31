@@ -15,6 +15,7 @@ from botocore.client import Config
 import os
 os.environ['AWS_NO_SIGN_REQUEST'] = 'YES'
 
+
 #Date picker
 from tethys_sdk.gizmos import DatePicker
 from django.shortcuts import render, reverse, redirect
@@ -43,6 +44,11 @@ s3 = SESSION.resource('s3')
 BUCKET_NAME = 'streamflow-app-data'
 BUCKET = s3.Bucket(BUCKET_NAME) 
 S3 = boto3.resource('s3', config=Config(signature_version=UNSIGNED))
+
+#AWS bucket information - it is a public bucket, no need to have security creds to complicate log ins.
+# BUCKET_NAME = 'streamflow-app-data'
+# s3 = boto3.resource("s3", config=Config(signature_version=UNSIGNED))
+# BUCKET = s3.Bucket(BUCKET_NAME)
 
 
 
@@ -759,6 +765,13 @@ class HUC_Eval(MapLayout):
             print(model_id, huc_id, startdate, enddate) 
 
             finaldf = self.Join_WBD_StreamStats(huc_id) #for future work, building a lookup table/dictionary would be much faster!
+
+            '''
+            This might be the correct location to determine model performance, this will determine icon color as a part of the geojson file below
+            We can also speed up the app by putting all model preds into one csv per state and all obs in one csv per state. - load one file vs multiple.
+            '''
+
+
             map_view['view']['extent'] = list(finaldf.geometry.total_bounds)
 
             #update json with start/end date, modelid to support click, adjustment in the get_plot_for_layer_feature()
@@ -806,6 +819,12 @@ class HUC_Eval(MapLayout):
 
     
             finaldf = self.reach_json(reach_ids)
+
+            '''
+            This might be the correct location to determine model performance, this will determine icon color as a part of the geojson file below
+            We can also speed up the app by putting all model preds into one csv per state and all obs in one csv per state. - load one file vs multiple.
+            '''
+
             map_view['view']['extent'] = list(finaldf.geometry.total_bounds)
             stations_geojson = json.loads(finaldf.to_json()) 
             stations_geojson.update({"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" }}}) 
@@ -1192,7 +1211,7 @@ class Reach_Eval(MapLayout):
         """
         Add layers to the MapLayout and create associated layer group objects.
         """
-        print(request)
+       
      
         try: 
              #http request for user inputs
@@ -1213,7 +1232,12 @@ class Reach_Eval(MapLayout):
             finaldf['startdate'] = datetime.strptime(startdate[0], '%m-%d-%Y').strftime('%Y-%m-%d')
             finaldf['enddate'] = datetime.strptime(enddate[0], '%m-%d-%Y').strftime('%Y-%m-%d')
             finaldf['model_id'] = model_id[0]
-            print(finaldf)
+            
+            '''
+            This might be the correct location to determine model performance, this will determine icon color as a part of the geojson file below
+            We can also speed up the app by putting all model preds into one csv per state and all obs in one csv per state. - load one file vs multiple.
+            '''
+
             map_view['view']['extent'] = list(finaldf.geometry.total_bounds)
             stations_geojson = json.loads(finaldf.to_json()) 
             stations_geojson.update({"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" }}})         
