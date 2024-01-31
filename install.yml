@@ -10,7 +10,11 @@ requirements:
   skip: false
   conda:
     channels:
+    - conda-forge
     packages:
+    - pandas
+    - geopandas
+    - boto3
 
   pip:
 
