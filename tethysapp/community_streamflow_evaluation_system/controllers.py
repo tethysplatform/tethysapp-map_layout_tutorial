@@ -22,18 +22,11 @@ from tethys_sdk.gizmos import DatePicker, SelectInput, TextInput
 import datetime
 from django.http import JsonResponse
 from django.urls import reverse_lazy
+from datetime import datetime
+from datetime import date, timedelta
 
 #Connect web pages
 from django.http import HttpResponse 
-
-# HOME = os.getcwd()
-# MODEL_OUTPUT_FOLDER_NAME = 'sample_nextgen_data'
-
-# #Connect to AWS s3 for data
-# #home = Path(app_workspace.path) #"./workspaces/app_workspace"
-
-# KEYPATH = f"{HOME}/tethysapp/community_streamflow_evaluation_system/AWSaccessKeys.csv"
-# ACCESS = pd.read_csv(KEYPATH)
 
 ACCESS_KEY_ID = app.get_custom_setting('Access_key_ID')
 ACCESS_KEY_SECRET = app.get_custom_setting('Secret_access_key')
@@ -43,10 +36,9 @@ ACCESS_KEY_SECRET = app.get_custom_setting('Secret_access_key')
 SESSION = boto3.Session(
     aws_access_key_id=ACCESS_KEY_ID,
     aws_secret_access_key=ACCESS_KEY_SECRET
-    # aws_access_key_id=ACCESS['Access key ID'][0],
-    # aws_secret_access_key=ACCESS['Secret access key'][0],
 )
 s3 = SESSION.resource('s3')
+
 #AWS bucket information
 BUCKET_NAME = 'streamflow-app-data'
 BUCKET = s3.Bucket(BUCKET_NAME) 
@@ -64,27 +56,14 @@ def home(request):
             format='mm-dd-yyyy',
             start_date='01-01-1980',
             end_date= '12-30-2020',
-            start_view='year',
+            start_view='year', 
             today_button=False, 
             initial='01-01-2019'
         ) 
-        end_date_picker = DatePicker( 
-            name='end-date',
-            display_text='End Date',
-            start_date='01-01-1980',
-            end_date= '12-30-2020',
-            autoclose=False,
-            format='mm-dd-yyyy',
-            start_view='year',
-            today_button=False, 
-            initial='06-11-2019'
-        )
-       
+     
 
         context = { 
-           'start_date_picker': start_date_picker,
-           'end_date_picker': end_date_picker,
-    
+           'start_date_picker': start_date_picker    
         }
 
 
@@ -95,11 +74,11 @@ def home(request):
 
 #Controller for the state class 
 @controller(
-    name="roset_state",
-    url="roset_state/",
+    name="state_eval",
+    url="state_eval/",
     app_workspace=True,
 )   
-class MapLayoutTutorialMapRosetState(MapLayout): 
+class State_Eval(MapLayout): 
     # Define base map options
     app = app
     back_url = reverse_lazy('community_streamflow_evaluation_system:home')
@@ -119,23 +98,8 @@ class MapLayoutTutorialMapRosetState(MapLayout):
     min_zoom = 1
     show_properties_popup = True  
     plot_slide_sheet = True
-    template_name = 'community_streamflow_evaluation_system/roset_state.html' 
+    template_name = 'community_streamflow_evaluation_system/state_eval.html' 
    
-    
- 
-    def update_data(self, request, *args, **kwargs):
-        """
-        #Custom REST method for updating data form Map Layout view.
-        Controller for the app home page
-        """
-        self.startdate=request.POST.get('start_date')
-        self.enddate=request.POST.get('end_date')
-        self.modelid=request.POST.get('model_id')
-        self.stateid=request.POST.get('state_id')
-
-        print(self.startdate,self.enddate, self.stateid, self.modelid)
- 
-        return JsonResponse({'success': True})
      
     def get_context(self, request, *args, **kwargs):
         """
@@ -258,31 +222,37 @@ class MapLayoutTutorialMapRosetState(MapLayout):
         context['model_id'] = model_id
         return context
 
-    def compose_layers(self, request, map_view, app_workspace, *args, **kwargs): #can we select the geojson files from the input fields (e.g: AL, or a dropdown)
+    def compose_layers(self, request, map_view, app_workspace, *args, **kwargs): 
         """
         Add layers to the MapLayout and create associated layer group objects.
         """
-     
-        #print(self.startdate,self.enddate, self.stateid, self.modelid)
-
-        print(request)
-
-
         try: 
+            #http request for user inputs
             state_id = request.GET.get('state_id')
             startdate = request.GET.get('start-date')
+            startdate = startdate.strip('][').split(', ')
             enddate = request.GET.get('end-date')
-            modelid = request.GET.get('model_id')
-            print(state_id)
-    
+            enddate = enddate.strip('][').split(', ')
+            model_id = request.GET.get('model_id')
+            model_id = model_id.strip('][').split(', ')
+            print(model_id, state_id, startdate, enddate) 
+
             # USGS stations - from AWS s3
-            stations_path = f"GeoJSON/StreamStats_{state_id}_4326.geojson" #will need to change the filename to have state before 4326
+            stations_path = f"GeoJSON/StreamStats_{state_id}_4326.geojson" 
             obj = s3.Object(BUCKET_NAME, stations_path)
-            stations_geojson = json.load(obj.get()['Body']) 
+            # stations_geojson = json.load(obj.get()['Body']) 
 
             # set the map extend based on the stations
             gdf = gpd.read_file(obj.get()['Body'], driver='GeoJSON')
             map_view['view']['extent'] = list(gdf.geometry.total_bounds)
+
+            #update json with start/end date, modelid to support click, adjustment in the get_plot_for_layer_feature()
+            gdf['startdate'] = datetime.strptime(startdate[0], '%m-%d-%Y').strftime('%Y-%m-%d')
+            gdf['enddate'] = datetime.strptime(enddate[0], '%m-%d-%Y').strftime('%Y-%m-%d')
+            gdf['model_id'] = model_id[0]
+
+            stations_geojson = json.loads(gdf.to_json()) 
+            stations_geojson.update({"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" }}})          
         
 
             stations_layer = self.build_geojson_layer(
@@ -303,18 +273,15 @@ class MapLayoutTutorialMapRosetState(MapLayout):
                     layer_control='checkbox',  # 'checkbox' or 'radio'
                     layers=[
                         stations_layer,
-                    #   flowpaths_layer,
                     ],
                     visible= True
                 )
             ]
 
         except: 
+            #Default state id to initiat mapping
+            print('No useable inputs, default mapping')
             state_id = 'AL'
-            startdate = '01-01-2019'
-            enddate = '01-02-2019'
-            modelid = 'NWM_v2.1'
-            print(state_id)
     
             # USGS stations - from AWS s3
             stations_path = f"GeoJSON/StreamStats_{state_id}_4326.geojson" #will need to change the filename to have state before 4326
@@ -344,7 +311,6 @@ class MapLayoutTutorialMapRosetState(MapLayout):
                     layer_control='checkbox',  # 'checkbox' or 'radio'
                     layers=[
                         stations_layer,
-                    #   flowpaths_layer,
                     ],
                     visible= True
                 )
@@ -392,7 +358,6 @@ class MapLayoutTutorialMapRosetState(MapLayout):
                                 *args, **kwargs):
         """
         Retrieves plot data for given feature on given layer.
-        - Can we use this function to plot two streams - explore by adding the example one again but multiplying by a factor (e.g., *1.2)
         Args:
             layer_name (str): Name/id of layer.
             feature_id (str): ID of feature.
@@ -401,16 +366,15 @@ class MapLayoutTutorialMapRosetState(MapLayout):
 
         Returns:
             str, list<dict>, dict: plot title, data series, and layout options, respectively.
-      """
-        # Get the feature ids
-        # startdate = request.GET.get('start-date')
-        # enddate = request.GET.get('end-date')
-        # modelid = request.GET.get('model_id')
-        # modelid = request.GET.get('model_id')
-        # state_id = request.GET.get('state_id')
-        id = feature_props.get('id') 
+      """     
+
+        # Get the feature ids, add start/end date, and model as features in geojson above to have here.
+        id = feature_props.get('id') #we could connect the hydrofabric in here for NWM v3.0
         NHD_id = feature_props.get('NHD_id') 
         state = feature_props.get('state')
+        startdate= feature_props.get('startdate')
+        enddate = feature_props.get('enddate')
+        model_id = feature_props.get('model_id')
   
         # USGS observed flow
         if layer_name == 'USGS Stations':
@@ -418,60 +382,113 @@ class MapLayoutTutorialMapRosetState(MapLayout):
                 'yaxis': {
                     'title': 'Streamflow (cfs)'
                 } 
-            }
-           
+            }  
+
             #USGS observed flow
             USGS_directory = f"NWIS/NWIS_sites_{state}.h5/NWIS_{id}.csv"
             obj = BUCKET.Object(USGS_directory)
             body = obj.get()['Body']
             USGS_df = pd.read_csv(body)
-            USGS_df.pop('Unnamed: 0')    
+            USGS_df.pop('Unnamed: 0')  
+            
 
             #modeled flow, starting with NWM
-            self.model = 'NWM_v2.1'
-            model_directory = f"{self.model}/NHD_segments_{state}.h5/{self.model}_{NHD_id}.csv"  #put state in geojson file
-            obj = BUCKET.Object(model_directory)
-            body = obj.get()['Body']
-            model_df = pd.read_csv(body)
-            model_df.pop('Unnamed: 0')
+            try:
+                #try to use model/date inputs for plotting
+                model_directory = f"{model_id}/NHD_segments_{state}.h5/{model_id}_{NHD_id}.csv"  
+                obj = BUCKET.Object(model_directory)
+                body = obj.get()['Body']
+                model_df = pd.read_csv(body)
+                model_df.pop('Unnamed: 0')
+                modelcols = model_df.columns.to_list()[-2:]
+                model_df = model_df[modelcols]
 
-            #combine Dfs, remove nans
-            USGS_df.drop_duplicates(subset=['Datetime'], inplace=True)
-            model_df.drop_duplicates(subset=['Datetime'],  inplace=True)
-            USGS_df.set_index('Datetime', inplace = True)
-            model_df.set_index('Datetime', inplace = True)
-            DF = pd.concat([USGS_df, model_df], axis = 1, join = 'inner')
-            DF.reset_index(inplace=True)
-            time_col = DF.Datetime.to_list()[:45] # date, adjust per Data source, limited to less than 500 obs/days (currently defaulted to the first 450)
-            USGS_streamflow_cfs = DF.USGS_flow.to_list()[:45] # date, adjust per Data source, limited to less than 500 obs/days (currently defaulted to the first 450)
-            Mod_streamflow_cfs = DF[f"{self.model[:3]}_flow"].to_list()[:45] # date, adjust per Data source, limited to less than 500 obs/days (currently defaulted to the first 450)
+                 #combine Dfs, remove nans
+                USGS_df.drop_duplicates(subset=['Datetime'], inplace=True)
+                model_df.drop_duplicates(subset=['Datetime'],  inplace=True)
+                USGS_df.set_index('Datetime', inplace = True, drop = True)
+                model_df.set_index('Datetime', inplace = True, drop = True)
+                DF = pd.concat([USGS_df, model_df], axis = 1, join = 'inner')
+                #try to select user input dates
+                DF = DF.loc[startdate:enddate]
+                DF.reset_index(inplace=True)
+                
+                time_col = DF.Datetime.to_list()#limited to less than 500 obs/days 
+                USGS_streamflow_cfs = DF.USGS_flow.to_list()#limited to less than 500 obs/days 
+                Mod_streamflow_cfs = DF[f"{model_id[:3]}_flow"].to_list()#limited to less than 500 obs/days
 
-            data = [
-                {
-                    'name': 'USGS Observed',
-                    'mode': 'lines',
-                    'x': time_col,
-                    'y': USGS_streamflow_cfs,
-                    'line': {
-                        'width': 2,
-                        'color': 'blue'
-                    }
-                },
-                {
-                    'name': f"{self.model} Modeled",
-                    'mode': 'lines',
-                    'x': time_col,
-                    'y': Mod_streamflow_cfs,
-                    'line': {
-                        'width': 2,
-                        'color': 'red'
-                    }
-                },
-            ]
+                data = [
+                    {
+                        'name': 'USGS Observed',
+                        'mode': 'lines',
+                        'x': time_col,
+                        'y': USGS_streamflow_cfs,
+                        'line': {
+                            'width': 2,
+                            'color': 'blue'
+                        }
+                    },
+                    {
+                        'name': f"{model_id} Modeled",
+                        'mode': 'lines',
+                        'x': time_col,
+                        'y': Mod_streamflow_cfs,
+                        'line': {
+                            'width': 2,
+                            'color': 'red'
+                        }
+                    },
+                ]
 
 
-            return f'{self.model} Modeled and Observed Streamflow at USGS site: "{id}"', data, layout
-        
+                return f'{model_id} Modeled and Observed Streamflow at USGS site: {id}', data, layout
+            
+            except:
+                print("No user inputs, default configuration.")
+                model = 'NWM_v2.1'
+                model_directory = f"{model}/NHD_segments_{state}.h5/{model}_{NHD_id}.csv"  #put state in geojson file
+                obj = BUCKET.Object(model_directory)
+                body = obj.get()['Body']
+                model_df = pd.read_csv(body)
+                model_df.pop('Unnamed: 0')
+
+                #combine Dfs, remove nans
+                USGS_df.drop_duplicates(subset=['Datetime'], inplace=True)
+                model_df.drop_duplicates(subset=['Datetime'],  inplace=True)
+                USGS_df.set_index('Datetime', inplace = True)
+                model_df.set_index('Datetime', inplace = True)
+                DF = pd.concat([USGS_df, model_df], axis = 1, join = 'inner')
+                DF.reset_index(inplace=True)
+                time_col = DF.Datetime.to_list()[:45] 
+                USGS_streamflow_cfs = DF.USGS_flow.to_list()[:45] 
+                Mod_streamflow_cfs = DF[f"{model[:3]}_flow"].to_list()[:45]
+
+                data = [
+                    {
+                        'name': 'USGS Observed',
+                        'mode': 'lines',
+                        'x': time_col,
+                        'y': USGS_streamflow_cfs,
+                        'line': {
+                            'width': 2,
+                            'color': 'blue'
+                        }
+                    },
+                    {
+                        'name': f"Default Configuration: NWM v2.1 Modeled",
+                        'mode': 'lines',
+                        'x': time_col,
+                        'y': Mod_streamflow_cfs,
+                        'line': {
+                            'width': 2,
+                            'color': 'red'
+                        }
+                    },
+                ]
+
+
+                return f'Default Configuration:{model} Observed Streamflow at USGS site: {id}', data, layout
+            
 
 
 
@@ -479,11 +496,11 @@ class MapLayoutTutorialMapRosetState(MapLayout):
 
 # #Controller for the HUC class
 @controller(
-    name="roset_huc",
-    url="roset_huc/",
+    name="huc_eval",
+    url="huc_eval/",
     app_workspace=True,
 )   
-class MapLayoutTutorialMapRosetHUC(MapLayout): 
+class HUC_Eval(MapLayout): 
     # Define base map options
     app = app
     back_url = reverse_lazy('community_streamflow_evaluation_system:home')
@@ -503,7 +520,7 @@ class MapLayoutTutorialMapRosetHUC(MapLayout):
     min_zoom = 1
     show_properties_popup = True  
     plot_slide_sheet = True
-    template_name = 'community_streamflow_evaluation_system/roset_huc.html' 
+    template_name = 'community_streamflow_evaluation_system/huc_eval.html' 
    
     
  
@@ -728,15 +745,28 @@ class MapLayoutTutorialMapRosetHUC(MapLayout):
         """
         Add layers to the MapLayout and create associated layer group objects.
         """
+        print(request)
         try: 
+             #http request for user inputs
+            startdate = request.GET.get('start-date')
+            startdate = startdate.strip('][').split(', ')
+            enddate = request.GET.get('end-date')
+            enddate = enddate.strip('][').split(', ')
+            model_id = request.GET.get('model_id')
+            model_id = model_id.strip('][').split(', ')
             huc_id = request.GET.get('huc_ids')
             huc_id = huc_id.strip('][').split(', ')
-            startdate = request.GET.get('start-date')
-            enddate = request.GET.get('end-date')   
-            modelid = request.GET.get('model_id')
-            finaldf = self.Join_WBD_StreamStats(huc_id)
-    
+            print(model_id, huc_id, startdate, enddate) 
+
+            finaldf = self.Join_WBD_StreamStats(huc_id) #for future work, building a lookup table/dictionary would be much faster!
             map_view['view']['extent'] = list(finaldf.geometry.total_bounds)
+
+            #update json with start/end date, modelid to support click, adjustment in the get_plot_for_layer_feature()
+            finaldf['startdate'] = datetime.strptime(startdate[0], '%m-%d-%Y').strftime('%Y-%m-%d')
+            finaldf['enddate'] = datetime.strptime(enddate[0], '%m-%d-%Y').strftime('%Y-%m-%d')
+            finaldf['model_id'] = model_id[0]
+            
+            #convert back to geojson
             stations_geojson = json.loads(finaldf.to_json()) 
             stations_geojson.update({"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" }}})         
 
@@ -846,7 +876,6 @@ class MapLayoutTutorialMapRosetHUC(MapLayout):
                                 *args, **kwargs):
         """
         Retrieves plot data for given feature on given layer.
-        - Can we use this function to plot two streams - explore by adding the example one again but multiplying by a factor (e.g., *1.2)
         Args:
             layer_name (str): Name/id of layer.
             feature_id (str): ID of feature.
@@ -855,16 +884,15 @@ class MapLayoutTutorialMapRosetHUC(MapLayout):
 
         Returns:
             str, list<dict>, dict: plot title, data series, and layout options, respectively.
-      """
-        # Get the feature ids
-        # startdate = request.GET.get('start-date')
-        # enddate = request.GET.get('end-date')
-        # modelid = request.GET.get('model_id')
-        # modelid = request.GET.get('model_id')
-        # state_id = request.GET.get('state_id')
-        id = feature_props.get('id') 
+      """     
+
+        # Get the feature ids, add start/end date, and model as features in geojson above to have here.
+        id = feature_props.get('id') #we could connect the hydrofabric in here for NWM v3.0
         NHD_id = feature_props.get('NHD_id') 
         state = feature_props.get('state')
+        startdate= feature_props.get('startdate')
+        enddate = feature_props.get('enddate')
+        model_id = feature_props.get('model_id')
   
         # USGS observed flow
         if layer_name == 'USGS Stations':
@@ -872,59 +900,112 @@ class MapLayoutTutorialMapRosetHUC(MapLayout):
                 'yaxis': {
                     'title': 'Streamflow (cfs)'
                 } 
-            }
-           
+            }  
+
             #USGS observed flow
             USGS_directory = f"NWIS/NWIS_sites_{state}.h5/NWIS_{id}.csv"
             obj = BUCKET.Object(USGS_directory)
             body = obj.get()['Body']
             USGS_df = pd.read_csv(body)
-            USGS_df.pop('Unnamed: 0')    
+            USGS_df.pop('Unnamed: 0')  
+            
 
             #modeled flow, starting with NWM
-            self.model = 'NWM_v2.1'
-            model_directory = f"{self.model}/NHD_segments_{state}.h5/{self.model}_{NHD_id}.csv"  #put state in geojson file
-            obj = BUCKET.Object(model_directory)
-            body = obj.get()['Body']
-            model_df = pd.read_csv(body)
-            model_df.pop('Unnamed: 0')
+            try:
+                #try to use model/date inputs for plotting
+                model_directory = f"{model_id}/NHD_segments_{state}.h5/{model_id}_{NHD_id}.csv"  
+                obj = BUCKET.Object(model_directory)
+                body = obj.get()['Body']
+                model_df = pd.read_csv(body)
+                model_df.pop('Unnamed: 0')
+                modelcols = model_df.columns.to_list()[-2:]
+                model_df = model_df[modelcols]
 
-            #combine Dfs, remove nans
-            USGS_df.drop_duplicates(subset=['Datetime'], inplace=True)
-            model_df.drop_duplicates(subset=['Datetime'],  inplace=True)
-            USGS_df.set_index('Datetime', inplace = True)
-            model_df.set_index('Datetime', inplace = True)
-            DF = pd.concat([USGS_df, model_df], axis = 1, join = 'inner')
-            DF.reset_index(inplace=True)
-            time_col = DF.Datetime.to_list()[:45] # date, adjust per Data source, limited to less than 500 obs/days (currently defaulted to the first 450)
-            USGS_streamflow_cfs = DF.USGS_flow.to_list()[:45] # date, adjust per Data source, limited to less than 500 obs/days (currently defaulted to the first 450)
-            Mod_streamflow_cfs = DF[f"{self.model[:3]}_flow"].to_list()[:45] # date, adjust per Data source, limited to less than 500 obs/days (currently defaulted to the first 450)
+                 #combine Dfs, remove nans
+                USGS_df.drop_duplicates(subset=['Datetime'], inplace=True)
+                model_df.drop_duplicates(subset=['Datetime'],  inplace=True)
+                USGS_df.set_index('Datetime', inplace = True, drop = True)
+                model_df.set_index('Datetime', inplace = True, drop = True)
+                DF = pd.concat([USGS_df, model_df], axis = 1, join = 'inner')
+                #try to select user input dates
+                DF = DF.loc[startdate:enddate]
+                DF.reset_index(inplace=True)
+                
+                time_col = DF.Datetime.to_list()#limited to less than 500 obs/days 
+                USGS_streamflow_cfs = DF.USGS_flow.to_list()#limited to less than 500 obs/days 
+                Mod_streamflow_cfs = DF[f"{model_id[:3]}_flow"].to_list()#limited to less than 500 obs/days
 
-            data = [
-                {
-                    'name': 'USGS Observed',
-                    'mode': 'lines',
-                    'x': time_col,
-                    'y': USGS_streamflow_cfs,
-                    'line': {
-                        'width': 2,
-                        'color': 'blue'
-                    }
-                },
-                {
-                    'name': f"{self.model} Modeled",
-                    'mode': 'lines',
-                    'x': time_col,
-                    'y': Mod_streamflow_cfs,
-                    'line': {
-                        'width': 2,
-                        'color': 'red'
-                    }
-                },
-            ]
+                data = [
+                    {
+                        'name': 'USGS Observed',
+                        'mode': 'lines',
+                        'x': time_col,
+                        'y': USGS_streamflow_cfs,
+                        'line': {
+                            'width': 2,
+                            'color': 'blue'
+                        }
+                    },
+                    {
+                        'name': f"{model_id} Modeled",
+                        'mode': 'lines',
+                        'x': time_col,
+                        'y': Mod_streamflow_cfs,
+                        'line': {
+                            'width': 2,
+                            'color': 'red'
+                        }
+                    },
+                ]
 
 
-            return f'{self.model} Modeled and Observed Streamflow at USGS site: "{id}"', data, layout
+                return f'{model_id} Modeled and Observed Streamflow at USGS site: {id}', data, layout
+            
+            except:
+                print("No user inputs, default configuration.")
+                model = 'NWM_v2.1'
+                model_directory = f"{model}/NHD_segments_{state}.h5/{model}_{NHD_id}.csv"  #put state in geojson file
+                obj = BUCKET.Object(model_directory)
+                body = obj.get()['Body']
+                model_df = pd.read_csv(body)
+                model_df.pop('Unnamed: 0')
+
+                #combine Dfs, remove nans
+                USGS_df.drop_duplicates(subset=['Datetime'], inplace=True)
+                model_df.drop_duplicates(subset=['Datetime'],  inplace=True)
+                USGS_df.set_index('Datetime', inplace = True)
+                model_df.set_index('Datetime', inplace = True)
+                DF = pd.concat([USGS_df, model_df], axis = 1, join = 'inner')
+                DF.reset_index(inplace=True)
+                time_col = DF.Datetime.to_list()[:45] 
+                USGS_streamflow_cfs = DF.USGS_flow.to_list()[:45] 
+                Mod_streamflow_cfs = DF[f"{model[:3]}_flow"].to_list()[:45]
+
+                data = [
+                    {
+                        'name': 'USGS Observed',
+                        'mode': 'lines',
+                        'x': time_col,
+                        'y': USGS_streamflow_cfs,
+                        'line': {
+                            'width': 2,
+                            'color': 'blue'
+                        }
+                    },
+                    {
+                        'name': f"Default Configuration: NWM v2.1 Modeled",
+                        'mode': 'lines',
+                        'x': time_col,
+                        'y': Mod_streamflow_cfs,
+                        'line': {
+                            'width': 2,
+                            'color': 'red'
+                        }
+                    },
+                ]
+
+
+                return f'Default Configuration:{model} Observed Streamflow at USGS site: {id}', data, layout
 
 
  
@@ -934,11 +1015,11 @@ class MapLayoutTutorialMapRosetHUC(MapLayout):
 
 #Controller for the Reach class
 @controller(
-    name="roset_reach",
-    url="roset_reach/",
+    name="reach_eval",
+    url="reach_eval/",
     app_workspace=True,
 )   
-class MapLayoutTutorialMapRosetReach(MapLayout): 
+class Reach_Eval(MapLayout): 
     # Define base map options
     app = app
     back_url = reverse_lazy('community_streamflow_evaluation_system:home')
@@ -958,7 +1039,7 @@ class MapLayoutTutorialMapRosetReach(MapLayout):
     min_zoom = 1
     show_properties_popup = True  
     plot_slide_sheet = True
-    template_name = 'community_streamflow_evaluation_system/roset_reach.html' 
+    template_name = 'community_streamflow_evaluation_system/reach_eval.html' 
     
  
     def update_data(self, request, *args, **kwargs):
@@ -1111,21 +1192,27 @@ class MapLayoutTutorialMapRosetReach(MapLayout):
         """
         Add layers to the MapLayout and create associated layer group objects.
         """
+        print(request)
      
         try: 
+             #http request for user inputs
+            startdate = request.GET.get('start-date')
+            startdate = startdate.strip('][').split(', ')
+            enddate = request.GET.get('end-date')
+            enddate = enddate.strip('][').split(', ')
+            model_id = request.GET.get('model_id')
+            model_id = model_id.strip('][').split(', ')
             reach_ids = request.GET.get('reach_ids')
             reach_ids = reach_ids.strip('][').split(', ')
-            startdate = request.GET.get('start-date')
-            enddate = request.GET.get('end-date')
-            modelid = request.GET.get('model_id')
-            print(reach_ids, startdate, enddate, modelid)
-            #for reach in reach_ids:
-             #   print(reach)
-            #breakpoint()
-            
+            print(reach_ids, startdate, enddate, model_id) 
 
             # USGS stations - from AWS s3
             finaldf = self.reach_json(reach_ids)
+
+            #update json with start/end date, modelid to support click, adjustment in the get_plot_for_layer_feature()
+            finaldf['startdate'] = datetime.strptime(startdate[0], '%m-%d-%Y').strftime('%Y-%m-%d')
+            finaldf['enddate'] = datetime.strptime(enddate[0], '%m-%d-%Y').strftime('%Y-%m-%d')
+            finaldf['model_id'] = model_id[0]
             print(finaldf)
             map_view['view']['extent'] = list(finaldf.geometry.total_bounds)
             stations_geojson = json.loads(finaldf.to_json()) 
@@ -1156,7 +1243,7 @@ class MapLayoutTutorialMapRosetReach(MapLayout):
             ]
 
         except: 
-            print('exception')
+            print('No inputs, going to defaults')
             #put in some defaults
             reach_ids = ['10126000', '10068500']
             startdate = '01-01-2019' 
@@ -1235,7 +1322,6 @@ class MapLayoutTutorialMapRosetReach(MapLayout):
                                 *args, **kwargs):
         """
         Retrieves plot data for given feature on given layer.
-        - Can we use this function to plot two streams - explore by adding the example one again but multiplying by a factor (e.g., *1.2)
         Args:
             layer_name (str): Name/id of layer.
             feature_id (str): ID of feature.
@@ -1244,16 +1330,15 @@ class MapLayoutTutorialMapRosetReach(MapLayout):
 
         Returns:
             str, list<dict>, dict: plot title, data series, and layout options, respectively.
-      """
-        # Get the feature ids
-        # startdate = request.GET.get('start-date')
-        # enddate = request.GET.get('end-date')
-        # modelid = request.GET.get('model_id')
-        # modelid = request.GET.get('model_id')
-        # state_id = request.GET.get('state_id')
-        id = feature_props.get('id') 
+      """     
+
+        # Get the feature ids, add start/end date, and model as features in geojson above to have here.
+        id = feature_props.get('id') #we could connect the hydrofabric in here for NWM v3.0
         NHD_id = feature_props.get('NHD_id') 
         state = feature_props.get('state')
+        startdate= feature_props.get('startdate')
+        enddate = feature_props.get('enddate')
+        model_id = feature_props.get('model_id')
   
         # USGS observed flow
         if layer_name == 'USGS Stations':
@@ -1261,56 +1346,109 @@ class MapLayoutTutorialMapRosetReach(MapLayout):
                 'yaxis': {
                     'title': 'Streamflow (cfs)'
                 } 
-            }
-           
+            }  
+
             #USGS observed flow
             USGS_directory = f"NWIS/NWIS_sites_{state}.h5/NWIS_{id}.csv"
             obj = BUCKET.Object(USGS_directory)
             body = obj.get()['Body']
             USGS_df = pd.read_csv(body)
-            USGS_df.pop('Unnamed: 0')    
+            USGS_df.pop('Unnamed: 0')  
+            
 
             #modeled flow, starting with NWM
-            self.model = 'NWM_v2.1'
-            model_directory = f"{self.model}/NHD_segments_{state}.h5/{self.model}_{NHD_id}.csv"  #put state in geojson file
-            obj = BUCKET.Object(model_directory)
-            body = obj.get()['Body']
-            model_df = pd.read_csv(body)
-            model_df.pop('Unnamed: 0')
+            try:
+                #try to use model/date inputs for plotting
+                model_directory = f"{model_id}/NHD_segments_{state}.h5/{model_id}_{NHD_id}.csv"  
+                obj = BUCKET.Object(model_directory)
+                body = obj.get()['Body']
+                model_df = pd.read_csv(body)
+                model_df.pop('Unnamed: 0')
+                modelcols = model_df.columns.to_list()[-2:]
+                model_df = model_df[modelcols]
 
-            #combine Dfs, remove nans
-            USGS_df.drop_duplicates(subset=['Datetime'], inplace=True)
-            model_df.drop_duplicates(subset=['Datetime'],  inplace=True)
-            USGS_df.set_index('Datetime', inplace = True)
-            model_df.set_index('Datetime', inplace = True)
-            DF = pd.concat([USGS_df, model_df], axis = 1, join = 'inner')
-            DF.reset_index(inplace=True)
-            time_col = DF.Datetime.to_list()[:45] # date, adjust per Data source, limited to less than 500 obs/days (currently defaulted to the first 450)
-            USGS_streamflow_cfs = DF.USGS_flow.to_list()[:45] # date, adjust per Data source, limited to less than 500 obs/days (currently defaulted to the first 450)
-            Mod_streamflow_cfs = DF[f"{self.model[:3]}_flow"].to_list()[:45] # date, adjust per Data source, limited to less than 500 obs/days (currently defaulted to the first 450)
+                 #combine Dfs, remove nans
+                USGS_df.drop_duplicates(subset=['Datetime'], inplace=True)
+                model_df.drop_duplicates(subset=['Datetime'],  inplace=True)
+                USGS_df.set_index('Datetime', inplace = True, drop = True)
+                model_df.set_index('Datetime', inplace = True, drop = True)
+                DF = pd.concat([USGS_df, model_df], axis = 1, join = 'inner')
+                #try to select user input dates
+                DF = DF.loc[startdate:enddate]
+                DF.reset_index(inplace=True)
+                
+                time_col = DF.Datetime.to_list()#limited to less than 500 obs/days 
+                USGS_streamflow_cfs = DF.USGS_flow.to_list()#limited to less than 500 obs/days 
+                Mod_streamflow_cfs = DF[f"{model_id[:3]}_flow"].to_list()#limited to less than 500 obs/days
 
-            data = [
-                {
-                    'name': 'USGS Observed',
-                    'mode': 'lines',
-                    'x': time_col,
-                    'y': USGS_streamflow_cfs,
-                    'line': {
-                        'width': 2,
-                        'color': 'blue'
-                    }
-                },
-                {
-                    'name': f"{self.model} Modeled",
-                    'mode': 'lines',
-                    'x': time_col,
-                    'y': Mod_streamflow_cfs,
-                    'line': {
-                        'width': 2,
-                        'color': 'red'
-                    }
-                },
-            ]
+                data = [
+                    {
+                        'name': 'USGS Observed',
+                        'mode': 'lines',
+                        'x': time_col,
+                        'y': USGS_streamflow_cfs,
+                        'line': {
+                            'width': 2,
+                            'color': 'blue'
+                        }
+                    },
+                    {
+                        'name': f"{model_id} Modeled",
+                        'mode': 'lines',
+                        'x': time_col,
+                        'y': Mod_streamflow_cfs,
+                        'line': {
+                            'width': 2,
+                            'color': 'red'
+                        }
+                    },
+                ]
 
 
-            return f'{self.model} Modeled and Observed Streamflow at USGS site: "{id}"', data, layout
+                return f'{model_id} Modeled and Observed Streamflow at USGS site: {id}', data, layout
+            
+            except:
+                print("No user inputs, default configuration.")
+                model = 'NWM_v2.1'
+                model_directory = f"{model}/NHD_segments_{state}.h5/{model}_{NHD_id}.csv"  #put state in geojson file
+                obj = BUCKET.Object(model_directory)
+                body = obj.get()['Body']
+                model_df = pd.read_csv(body)
+                model_df.pop('Unnamed: 0')
+
+                #combine Dfs, remove nans
+                USGS_df.drop_duplicates(subset=['Datetime'], inplace=True)
+                model_df.drop_duplicates(subset=['Datetime'],  inplace=True)
+                USGS_df.set_index('Datetime', inplace = True)
+                model_df.set_index('Datetime', inplace = True)
+                DF = pd.concat([USGS_df, model_df], axis = 1, join = 'inner')
+                DF.reset_index(inplace=True)
+                time_col = DF.Datetime.to_list()[:45] 
+                USGS_streamflow_cfs = DF.USGS_flow.to_list()[:45] 
+                Mod_streamflow_cfs = DF[f"{model[:3]}_flow"].to_list()[:45]
+
+                data = [
+                    {
+                        'name': 'USGS Observed',
+                        'mode': 'lines',
+                        'x': time_col,
+                        'y': USGS_streamflow_cfs,
+                        'line': {
+                            'width': 2,
+                            'color': 'blue'
+                        }
+                    },
+                    {
+                        'name': f"Default Configuration: NWM v2.1 Modeled",
+                        'mode': 'lines',
+                        'x': time_col,
+                        'y': Mod_streamflow_cfs,
+                        'line': {
+                            'width': 2,
+                            'color': 'red'
+                        }
+                    },
+                ]
+
+
+                return f'Default Configuration:{model} Observed Streamflow at USGS site: {id}', data, layout
