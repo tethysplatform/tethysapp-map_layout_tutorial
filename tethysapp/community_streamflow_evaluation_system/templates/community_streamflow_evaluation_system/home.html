@@ -20,7 +20,7 @@
 
  
 
-  <form action="{% url 'community_streamflow_evaluation_system:roset_reach' %}" method="get">
+  <form action="{% url 'community_streamflow_evaluation_system:reach_eval' %}" method="get">
     <p>The REACH evaluation class allows the user to investigate model performance for specific USGS/NWIS locations.</p>
       <span class="btn-group ">
           <a name="submit-go-to-map-reach" class="btn btn-success" role="button" onclick="document.forms[0].submit();" id="submit-go-to-map-reach">
@@ -31,7 +31,7 @@
 
   <br>
 
-<form action="{% url 'community_streamflow_evaluation_system:roset_state' %}" method="get">
+<form action="{% url 'community_streamflow_evaluation_system:state_eval' %}" method="get">
   <p>The STATE evaluation class locates all USGS monitoring locations within a state to investigate model performance</p>
     <span class="btn-group ">
         <a name="submit-go-to-map-state" class="btn btn-success" role="button" onclick="document.forms[1].submit();" id="submit-go-to-map-state">
@@ -42,7 +42,7 @@
 
 <br>
 
-<form action="{% url 'community_streamflow_evaluation_system:roset_huc' %}" method="get">
+<form action="{% url 'community_streamflow_evaluation_system:huc_eval' %}" method="get">
   <p>The HUC evaluation class locates all USGS monitoring locations within a HUCid to investigate model performance.</p>
     <span class="btn-group ">
         <a name="submit-go-to-map" class="btn btn-success" role="button" onclick="document.forms[2].submit();" id="submit-go-to-map">

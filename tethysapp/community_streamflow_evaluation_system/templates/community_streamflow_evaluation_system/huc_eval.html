@@ -10,9 +10,9 @@
   <!--<form method="get" action="roset_dates/"-->
   <br>
   <!---->
-  <form action="{% url 'community_streamflow_evaluation_system:roset_reach' %}" method="get">
+  <form action="{% url 'community_streamflow_evaluation_system:huc_eval' %}" method="get">
     <p>Please complete the below information to view the interactive streamflow evaluation tool.</p>
-    <div style="width:100%">{% gizmo TextInput reach_ids %}</div>
+    <div style="width:100%">{% gizmo TextInput huc_ids %}</div>
     <div style="width:100%">{% gizmo SelectInput model_id %}</div>
     <div style="width:100%">{% gizmo date_picker start_date_picker %}</div>
     <div style="width:100%">{% gizmo date_picker end_date_picker %}</div>
