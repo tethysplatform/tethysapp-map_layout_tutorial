@@ -2,34 +2,21 @@
 {% load static %}
 {% load tethys_gizmos %}
 
-<!-- add drop down for all the nwm stations with filter added -->
-{% block app_navigation %}
+{% block after_nav_header %}
   {{ block.super }}
-
-  {% block after_nav_header %}
-  <!--<form method="get" action="roset_dates/"-->
   <br>
-  <!---->
   <form action="{% url 'community_streamflow_evaluation_system:reach_eval' %}" method="get">
-    <p>Please complete the below information to view the interactive streamflow evaluation tool.</p>
+    <p>Input reaches of interest and select a model and start/end date from the dropdown below to view timeseries and an interactive map.</p>
     <div style="width:100%">{% gizmo TextInput reach_ids %}</div>
     <div style="width:100%">{% gizmo SelectInput model_id %}</div>
     <div style="width:100%">{% gizmo date_picker start_date_picker %}</div>
     <div style="width:100%">{% gizmo date_picker end_date_picker %}</div>
     <span class="btn-group ">
         <a name="submit-go-to-map" class="btn btn-success" role="button" onclick="document.forms[0].submit();">
-            <span class="glyphicon glyphicon-play"></span>Update Data
+            <span class="glyphicon glyphicon-play"></span>Update Map
         </a>
     </span>
 </form>
 
-
-  {% endblock %}
-
 {% endblock %}
 
-{% block scripts %}
-  {{ block.super }}
-  <!-- <script src="{% static 'community_streamflow_evaluation_system/js/roset_aws.js' %}" type="text/javascript"></script> -->
-
-{% endblock %}

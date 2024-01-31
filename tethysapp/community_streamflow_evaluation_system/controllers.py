@@ -29,10 +29,15 @@ from datetime import date, timedelta
 #Connect web pages
 from django.http import HttpResponse 
 
+#utils
+from .utils import combine_jsons, reach_json
+
+#Set Global Variables
+
 ACCESS_KEY_ID = app.get_custom_setting('Access_key_ID')
 ACCESS_KEY_SECRET = app.get_custom_setting('Secret_access_key')
 
-
+#AWS Data Connectivity
 #start session
 SESSION = boto3.Session(
     aws_access_key_id=ACCESS_KEY_ID,
@@ -40,17 +45,22 @@ SESSION = boto3.Session(
 )
 s3 = SESSION.resource('s3')
 
-#AWS bucket information
 BUCKET_NAME = 'streamflow-app-data'
 BUCKET = s3.Bucket(BUCKET_NAME) 
 S3 = boto3.resource('s3', config=Config(signature_version=UNSIGNED))
 
-#AWS bucket information - it is a public bucket, no need to have security creds to complicate log ins.
-# BUCKET_NAME = 'streamflow-app-data'
-# s3 = boto3.resource("s3", config=Config(signature_version=UNSIGNED))
-# BUCKET = s3.Bucket(BUCKET_NAME)
-
-
+#Controller base configurations
+BASEMAPS = [
+        {'ESRI': {'layer':'NatGeo_World_Map'}},
+        {'ESRI': {'layer':'World_Street_Map'}},
+        {'ESRI': {'layer':'World_Imagery'}},
+        {'ESRI': {'layer':'World_Shaded_Relief'}},
+        {'ESRI': {'layer':'World_Topo_Map'}},
+        'OpenStreetMap',      
+    ]
+MAX_ZOOM = 16
+MIN_ZOOM = 1
+BACK_URL = reverse_lazy('community_streamflow_evaluation_system:home')
 
 @controller
 def home(request):
@@ -87,21 +97,13 @@ def home(request):
 class State_Eval(MapLayout): 
     # Define base map options
     app = app
-    back_url = reverse_lazy('community_streamflow_evaluation_system:home')
+    back_url = BACK_URL
     base_template = 'community_streamflow_evaluation_system/base.html'
-    map_title = 'Research Oriented Streamflow Evaluation Toolset'
-    map_subtitle = 'An open-source hydrological model evaluation tool for NHDPlus models'
-    basemaps = [
-        {'ESRI': {'layer':'NatGeo_World_Map'}},
-        {'ESRI': {'layer':'World_Street_Map'}},
-        {'ESRI': {'layer':'World_Imagery'}},
-        {'ESRI': {'layer':'World_Shaded_Relief'}},
-        {'ESRI': {'layer':'World_Topo_Map'}},
-        'OpenStreetMap',      
-    ]
-    default_map_extent = [-73.555665, 42.053811, -71.6359, 41.10654]
-    max_zoom = 16
-    min_zoom = 1
+    map_title = 'State Evaluation Class'
+    map_subtitle = 'Evaluate hydrological model performance for a State of interest.'
+    basemaps = BASEMAPS
+    max_zoom = MAX_ZOOM
+    min_zoom = MIN_ZOOM
     show_properties_popup = True  
     plot_slide_sheet = True
     template_name = 'community_streamflow_evaluation_system/state_eval.html' 
@@ -241,12 +243,10 @@ class State_Eval(MapLayout):
             enddate = enddate.strip('][').split(', ')
             model_id = request.GET.get('model_id')
             model_id = model_id.strip('][').split(', ')
-            print(model_id, state_id, startdate, enddate) 
-
+      
             # USGS stations - from AWS s3
             stations_path = f"GeoJSON/StreamStats_{state_id}_4326.geojson" 
             obj = s3.Object(BUCKET_NAME, stations_path)
-            # stations_geojson = json.load(obj.get()['Body']) 
 
             # set the map extend based on the stations
             gdf = gpd.read_file(obj.get()['Body'], driver='GeoJSON')
@@ -509,40 +509,17 @@ class State_Eval(MapLayout):
 class HUC_Eval(MapLayout): 
     # Define base map options
     app = app
-    back_url = reverse_lazy('community_streamflow_evaluation_system:home')
+    back_url = BACK_URL
     base_template = 'community_streamflow_evaluation_system/base.html'
-    map_title = 'Research Oriented Streamflow Evaluation Toolset'
-    map_subtitle = 'An open-source hydrological model evaluation tool for NHDPlus models'
-    basemaps = [ 
-        {'ESRI': {'layer':'NatGeo_World_Map'}},
-        {'ESRI': {'layer':'World_Street_Map'}},
-        {'ESRI': {'layer':'World_Imagery'}},
-        {'ESRI': {'layer':'World_Shaded_Relief'}},
-        {'ESRI': {'layer':'World_Topo_Map'}},
-        'OpenStreetMap',      
-    ]
-    default_map_extent = [-73.555665, 42.053811, -71.6359, 41.10654]
-    max_zoom = 16
-    min_zoom = 1
+    map_title = 'HUC Evaluation'
+    map_subtitle = 'Evaluate hydrological model performance for a HUC of interest.'
+    basemaps = BASEMAPS
+    max_zoom = MAX_ZOOM
+    min_zoom = MIN_ZOOM
     show_properties_popup = True  
     plot_slide_sheet = True
     template_name = 'community_streamflow_evaluation_system/huc_eval.html' 
    
-    
- 
-    def update_data(self, request, *args, **kwargs):
-        """
-        #Custom REST method for updating data form Map Layout view.
-        Controller for the app home page
-        """
-        self.startdate=request.POST.get('start_date')
-        self.enddate=request.POST.get('end_date')
-        self.modelid=request.POST.get('model_id')
-        self.hucids=request.POST.get('huc_ids')
-
-        print(self.startdate,self.enddate, self.hucids, self.modelid)
- 
-        return JsonResponse({'success': True})
      
     def get_context(self, request, *args, **kwargs):
         """
@@ -650,7 +627,6 @@ class HUC_Eval(MapLayout):
             NWIS = list(Streamstats['NWIS_site_id'].astype(str))
             Streamstats['NWIS_site_id'] = ["0"+str(i) if len(i) <8 else i for i in NWIS]        
 
-            print('Finding NWIS monitoring stations within ', HUCid, ' watershed boundary')
             # Join StreamStats with HUC
             sites = StreamStats.sjoin(HUC_Geo, how = 'inner', predicate = 'intersects')
             
@@ -672,7 +648,7 @@ class HUC_Eval(MapLayout):
                 stationpaths.append(stations_path)
 
             #combine stations
-            combined = self.combine_jsons(stationpaths)
+            combined = combine_jsons(stationpaths, BUCKET_NAME, S3)
             
 
             #get site ids out of DF to make new geojson
@@ -690,68 +666,11 @@ class HUC_Eval(MapLayout):
         except KeyError:
             print('No monitoring stations in this HUC')
 
-     #function for getting reachids -- this could likely be placed into a utils.py file...
-    def combine_jsons(self,file_list):
-
-        all_data_df = gpd.GeoDataFrame()
-        for json_file in file_list:
-            obj = s3.Object(BUCKET_NAME, json_file)
-            gdf = gpd.read_file(obj.get()['Body'], driver='GeoJSON')
-            all_data_df = pd.concat([all_data_df, gdf]).set_crs(crs= 'EPSG:4326')
-
-        return all_data_df
-    
-    def reach_json(self,reach_ids):
-        csv_key = 'Streamstats/Streamstats.csv'
-        obj = BUCKET.Object(csv_key)
-        body = obj.get()['Body']
-        Streamstats = pd.read_csv(body)
-        Streamstats.pop('Unnamed: 0')
-        Streamstats.drop_duplicates(subset = 'NWIS_site_id', inplace = True)
-        Streamstats.reset_index(inplace = True, drop = True)
-
-        #Convert to geodataframe
-        StreamStats = gpd.GeoDataFrame(Streamstats, geometry=gpd.points_from_xy(Streamstats.dec_long_va, Streamstats.dec_lat_va))
-
-        #the csv loses the 0 in front of USGS ids, fix
-        NWIS = list(Streamstats['NWIS_site_id'].astype(str))
-        Streamstats['NWIS_site_id'] = ["0"+str(i) if len(i) <8 else i for i in NWIS]  
-
-        #Get streamstats information for each USGS location
-        sites = pd.DataFrame()
-
-        for site in reach_ids:
-            s = Streamstats[Streamstats['NWIS_site_id'] ==  str(site)]
-            sites = pd.concat([sites, s])
-
-        stateids = list(set(list(sites['state_id'])))
-
-        stationpaths = []
-        for state in stateids:
-            stations_path = f"GeoJSON/StreamStats_{state}_4326.geojson" #will need to change the filename to have state before 4326
-            stationpaths.append(stations_path)
-
-        #combine stations
-        combined = self.combine_jsons(stationpaths)
-        
-
-        #get site ids out of DF to make new geojson
-        finaldf = gpd.GeoDataFrame()
-        for site in reach_ids:
-            df = combined[combined['USGS_id'] == site]
-            finaldf = pd.concat([finaldf, df])
-
-        #reset index and drop any duplicates
-        finaldf.reset_index(inplace = True, drop = True)
-        finaldf.drop_duplicates('USGS_id', inplace = True)        
-
-        return finaldf
 
     def compose_layers(self, request, map_view, app_workspace, *args, **kwargs): #can we select the geojson files from the input fields (e.g: AL, or a dropdown)
         """
         Add layers to the MapLayout and create associated layer group objects.
         """
-        print(request)
         try: 
              #http request for user inputs
             startdate = request.GET.get('start-date')
@@ -762,7 +681,6 @@ class HUC_Eval(MapLayout):
             model_id = model_id.strip('][').split(', ')
             huc_id = request.GET.get('huc_ids')
             huc_id = huc_id.strip('][').split(', ')
-            print(model_id, huc_id, startdate, enddate) 
 
             finaldf = self.Join_WBD_StreamStats(huc_id) #for future work, building a lookup table/dictionary would be much faster!
 
@@ -817,8 +735,7 @@ class HUC_Eval(MapLayout):
             enddate = '01-02-2019'
             modelid = 'NWM_v2.1'
 
-    
-            finaldf = self.reach_json(reach_ids)
+            finaldf = reach_json(reach_ids,BUCKET, BUCKET_NAME, S3)
 
             '''
             This might be the correct location to determine model performance, this will determine icon color as a part of the geojson file below
@@ -1041,39 +958,17 @@ class HUC_Eval(MapLayout):
 class Reach_Eval(MapLayout): 
     # Define base map options
     app = app
-    back_url = reverse_lazy('community_streamflow_evaluation_system:home')
+    back_url = BACK_URL
     base_template = 'community_streamflow_evaluation_system/base.html'
-    map_title = 'Research Oriented Streamflow Evaluation Toolset'
-    map_subtitle = 'An open-source hydrological model evaluation tool for NHDPlus models'
-    basemaps = [
-        {'ESRI': {'layer':'NatGeo_World_Map'}},
-        {'ESRI': {'layer':'World_Street_Map'}},
-        {'ESRI': {'layer':'World_Imagery'}},
-        {'ESRI': {'layer':'World_Shaded_Relief'}},
-        {'ESRI': {'layer':'World_Topo_Map'}},
-        'OpenStreetMap',      
-    ]
-    default_map_extent = [-73.555665, 42.053811, -71.6359, 41.10654]
-    max_zoom = 16
-    min_zoom = 1
+    map_title = 'Reach Evaluation Class'
+    map_subtitle = 'Evaluate hydrological model performance for reaches of interest.'
+    basemaps = BASEMAPS
+    max_zoom = MAX_ZOOM
+    min_zoom = MIN_ZOOM
     show_properties_popup = True  
     plot_slide_sheet = True
     template_name = 'community_streamflow_evaluation_system/reach_eval.html' 
     
- 
-    def update_data(self, request, *args, **kwargs):
-        """
-        #Custom REST method for updating data form Map Layout view.
-        Controller for the app home page
-        """
-        self.startdate=request.POST.get('start_date')
-        self.enddate=request.POST.get('end_date')
-        self.modelid=request.POST.get('model_id')
-        self.reachids=request.POST.get('reach_ids')
-
-        print(self.startdate,self.enddate, self.reachids, self.modelid)
- 
-        return JsonResponse({'success': True})
      
     def get_context(self, request, *args, **kwargs):
         """
@@ -1142,69 +1037,6 @@ class Reach_Eval(MapLayout):
         context['reach_ids'] = reach_ids
         context['model_id'] = model_id
         return context
-    
-    #function for getting reachids -- this could likely be placed into a utils.py file...
-    def combine_jsons(self,file_list):
-        #file_list = ['first.json', 'second.json',... ,'last.json']
-        all_data_df = gpd.GeoDataFrame()
-        for json_file in file_list:
-                    # with open(json_file,'r+') as file:
-            #    # First we load existing data into a dict.
-            #    #file_data = json.load(file)
-            obj = s3.Object(BUCKET_NAME, json_file)
-            stations_geojson = json.load(obj.get()['Body']) 
-            gdf = gpd.read_file(obj.get()['Body'], driver='GeoJSON')
-            all_data_df = pd.concat([all_data_df, gdf]).set_crs(crs= 'EPSG:4326')
-
-        return all_data_df
-
-    def reach_json(self,reach_ids):
-        csv_key = 'Streamstats/Streamstats.csv'
-        obj = BUCKET.Object(csv_key)
-        body = obj.get()['Body']
-        Streamstats = pd.read_csv(body)
-        Streamstats.pop('Unnamed: 0')
-        Streamstats.drop_duplicates(subset = 'NWIS_site_id', inplace = True)
-        Streamstats.reset_index(inplace = True, drop = True)
-
-        #Convert to geodataframe
-        StreamStats = gpd.GeoDataFrame(Streamstats, geometry=gpd.points_from_xy(Streamstats.dec_long_va, Streamstats.dec_lat_va))
-
-        #the csv loses the 0 in front of USGS ids, fix
-        NWIS = list(Streamstats['NWIS_site_id'].astype(str))
-        Streamstats['NWIS_site_id'] = ["0"+str(i) if len(i) <8 else i for i in NWIS]  
-
-        #Get streamstats information for each USGS location
-        sites = pd.DataFrame()
-
-        for site in reach_ids:
-            print(site)
-            s = Streamstats[Streamstats['NWIS_site_id'] ==  str(site)]
-            sites = pd.concat([sites, s])
-
-        #print(sites)
-        stateids = list(set(list(sites['state_id'])))
-
-        stationpaths = []
-        for state in stateids:
-            stations_path = f"GeoJSON/StreamStats_{state}_4326.geojson" #will need to change the filename to have state before 4326
-            stationpaths.append(stations_path)
-
-        #combine stations
-        combined = self.combine_jsons(stationpaths)
-        
-
-        #get site ids out of DF to make new geojson
-        finaldf = gpd.GeoDataFrame()
-        for site in reach_ids:
-            df = combined[combined['USGS_id'] == site]
-            finaldf = pd.concat([finaldf, df])
-
-        #reset index and drop any duplicates
-        finaldf.reset_index(inplace = True, drop = True)
-        finaldf.drop_duplicates('USGS_id', inplace = True)        
-
-        return finaldf
 
 
     def compose_layers(self, request, map_view, app_workspace, *args, **kwargs): #can we select the geojson files from the input fields (e.g: AL, or a dropdown)
@@ -1223,10 +1055,9 @@ class Reach_Eval(MapLayout):
             model_id = model_id.strip('][').split(', ')
             reach_ids = request.GET.get('reach_ids')
             reach_ids = reach_ids.strip('][').split(', ')
-            print(reach_ids, startdate, enddate, model_id) 
 
             # USGS stations - from AWS s3
-            finaldf = self.reach_json(reach_ids)
+            finaldf = reach_json(reach_ids,BUCKET, BUCKET_NAME, S3)
 
             #update json with start/end date, modelid to support click, adjustment in the get_plot_for_layer_feature()
             finaldf['startdate'] = datetime.strptime(startdate[0], '%m-%d-%Y').strftime('%Y-%m-%d')
@@ -1273,9 +1104,7 @@ class Reach_Eval(MapLayout):
             startdate = '01-01-2019' 
             enddate = '01-02-2019'
             modelid = 'NWM_v2.1'
-
-    
-            finaldf = self.reach_json(reach_ids)
+            finaldf = reach_json(reach_ids,BUCKET, BUCKET_NAME, S3)
             map_view['view']['extent'] = list(finaldf.geometry.total_bounds)
             stations_geojson = json.loads(finaldf.to_json()) 
             stations_geojson.update({"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" }}}) 
