@@ -25,8 +25,8 @@ Given the launch of the [Cooperative Institute for Research to Operations in Hyd
 National-scale streamflow modeling remains a modern challenge, as changes in the underlying hydrology from land use and land cover (LULC) change, anthropogentic streamflow modification, and general process components (reach length, hydrogeophysical processes, precipitation, temperature, etc) greatly influence hydrological modeling.
 To benchmark model performance, characterize improvements in hydrological modeling formuations, and generate reproducible science, the team at the [Alabama Water Institute (AWI)](https://awi.ua.edu/) developed Community Streamflow Evaluation System (CSES) to originally characterize the water supply forecasting skill of the National Water Model v2.1 (NWM v3.0 coming soon!) in the Great Salt Lake Basin. 
 The tool quickly scaled and with the support of the [Earth Science Information Partners (ESIP)](https://www.esipfed.org/), provided an opportunity to turn the novel evaluation platform into a web application.
-This GitHub repository contains the code to create an innovative [Tethys Web Platform](https://www.tethysplatform.org/) to share our research tools with the great research and operational hydrological community.
-By using CSES, researchers and practitioners can interact with model outputs and evaluate the performance of hydrological models (currently the NWM v2.1) for their region.
+This GitHub repository contains the code to create an innovative [Tethys Web Platform](http://portal.ciroh.org/t/apps/community-streamflow-evaluation-system) to share our research tools with the great research and operational hydrological community.
+By using CSES, researchers and practitioners can interact with model outputs and evaluate the performance of hydrological models (currently the NWM v2.1) for their region. 
 
 ### State Evaluation Methods
 ![StateEval](./Images/StateEval.JPG)
