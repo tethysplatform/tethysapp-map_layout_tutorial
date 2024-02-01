@@ -3,7 +3,7 @@ from tethys_apps.app_installation import find_all_resource_files
 from tethys_apps.base.app_base import TethysAppBase
 
 # -- Apps Definition -- #
-app_package = 'map_layout_tutorial'
+app_package = 'community_streamflow_evaluation_system'
 release_package = f'{TethysAppBase.package_namespace}-{app_package}'
 
 # -- Python Dependencies -- #
