@@ -23,10 +23,10 @@ CSES evaluates modeled streamflow to over 5,000 in situ USGS monitoring sites, p
 ## Application Overview
 Given the launch of the [Cooperative Institute for Research to Operations in Hydrology (CIROH)](https://ciroh.ua.edu/) in April, 2020, CIROH scientists from 28 different academic, government, and private are working to improve the understanding of hydrologic processes, operational hydrologic forecasting techniques and workflows, community water modeling, translation of forecasts to actionable products, and use of water predictions in decision making.
 National-scale streamflow modeling remains a modern challenge, as changes in the underlying hydrology from land use and land cover (LULC) change, anthropogentic streamflow modification, and general process components (reach length, hydrogeophysical processes, precipitation, temperature, etc) greatly influence hydrological modeling.
-To benchmark model performance, characterize improvements in hydrological modeling formuations, and generate reproducible science, the team at the [Alabama Water Institute (AWI)](https://awi.ua.edu/) developed CSES to originally characterize the water supply forecasting skill of the National Water Model v2.1 in the Great Salt Lake Basin. 
+To benchmark model performance, characterize improvements in hydrological modeling formuations, and generate reproducible science, the team at the [Alabama Water Institute (AWI)](https://awi.ua.edu/) developed Community Streamflow Evaluation System (CSES) to originally characterize the water supply forecasting skill of the National Water Model v2.1 (NWM v3.0 coming soon!) in the Great Salt Lake Basin. 
 The tool quickly scaled and with the support of the [Earth Science Information Partners (ESIP)](https://www.esipfed.org/), provided an opportunity to turn the novel evaluation platform into a web application.
-This GitHub repository contains the code to create an innovative [Tethys Web Platform](https://www.tethysplatform.org/) to share our reseach tools with the great research and operational hydrological community.
-By using Community-Streamflow-Evaluation-System, researchers and practitioners can interact with model outputs and evaluate the performance of hydrological models (current the NWM) for their region.
+This GitHub repository contains the code to create an innovative [Tethys Web Platform](https://www.tethysplatform.org/) to share our research tools with the great research and operational hydrological community.
+By using CSES, researchers and practitioners can interact with model outputs and evaluate the performance of hydrological models (currently the NWM v2.1) for their region.
 
 ### State Evaluation Methods
 ![StateEval](./Images/StateEval.JPG)
@@ -61,20 +61,23 @@ No plot showing, there likely is no model or observational data for the inputs, 
 
 
 ### Data 
-Community-Streamflow-Evaluation-System leverages USGS/NWIS observations from 1980-2020 and colocated and while all data is publically available through the respective agencies, we found the download time to be preventative for a timely model evaluation. 
+Community Streamflow Evaluation System (CSES) leverages USGS/NWIS observations from 1980-2020 and colocated and while all data is publically available through the respective agencies, we found the download time to be preventative for a timely model evaluation. 
 The Alabama Water Institute at the University of Alabama hosts NWM v2.1 retrospective for all colocated USGS monitoring stations at a daily temporal resolution and provides the data free of charge via access to Amazon AWS S3 cloud storage.
-Community-Streamflow-Evaluation-System can quickly access observed and predicted data supporting a fast and repeatable tool for evaluating modeled streamflow performance.
+CSES can quickly access observed and predicted data supporting a fast and repeatable tool for evaluating modeled streamflow performance.
 
 ## Looking for the research-focused CSES?
-The python-based [Community-Streamflow-Evaluation-System](https://github.com/whitelightning450/Community-Streamflow-Evaluation-System) package provides a foundation to evaluate national hydrography dataset (nhd) based model outputs with colocated USGS/NWIS streamflow monitoring stations (parameter: 060) without the need to download in-situ or NWM v2.1 data (NWM v3.0 coming soon!). 
+The python-based [Community-Streamflow-Evaluation-System](https://github.com/whitelightning450/Community-Streamflow-Evaluation-System) package provides a foundation to evaluate national hydrography dataset (NHD) based model outputs with colocated USGS/NWIS streamflow monitoring stations (parameter: 060) without the need to download in-situ or NWM v2.1 data (NWM v3.0 coming soon!). 
 The package is similar to the web application but supports a hands-on approach to model evaluation, such as providing a template and data model for researchers to evaluate their model.
 
 ## Want to see your model in the App?
 Please reach out the AWI team so we can put your model results in our AWS S3 database.
-We currently have a simple data model and are looking into more computationally effient methods to expedite interactivity and the overall hydrological evaluation experience.
+We currently have a simple data model and are looking into more computationally efficient methods to expedite interactivity and the overall hydrological model evaluation experience.
 
 ## Want to contribute?
 Reach out to the AWI team and we can identify meaningful areas to grow CSES.
 Community is in the name for a reason and we intende to integrate more hydrological modeling components into the tool kit as funding allows.
 Specific areas of contribution include snow, atmospheric forcings, and other model outputs.
 Let's advance the community modeling paradigm together!
+
+## Funding Acknowledgement
+Funding to support this research was awarded to the Cooperative Institute for Research to Operations in Hydrology (CIROH) through the NOAA Cooperative Agreement with The University of Alabama (NA22NWS4320003). This work is based on CIROH's Community Streamflow Evaluation System (CSES) provided by the ESIP Lab with support from the National Aeronautics and Space Administration (NASA), National Oceanic and Atmospheric Administration (NOAA) and the United States Geologic Survey (USGS).
