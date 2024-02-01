@@ -1,0 +1,9 @@
+/* added for the long white space in the app */
+
+#app-content-wrapper {
+    overflow-y: hidden;
+}
+#nav-header a{
+  background-color: #003087 ;
+  color:white !important;
+}

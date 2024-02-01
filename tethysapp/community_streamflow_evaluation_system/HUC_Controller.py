@@ -41,8 +41,12 @@ from .utils import combine_jsons, reach_json
 
 #Set Global Variables
 
-ACCESS_KEY_ID = app.get_custom_setting('Access_key_ID')
-ACCESS_KEY_SECRET = app.get_custom_setting('Secret_access_key')
+try:
+    ACCESS_KEY_ID = app.get_custom_setting('Access_key_ID')
+    ACCESS_KEY_SECRET = app.get_custom_setting('Secret_access_key')
+except Exception:
+    ACCESS_KEY_ID = ''
+    ACCESS_KEY_SECRET = ''
 
 #AWS Data Connectivity
 #start session

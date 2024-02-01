@@ -29,12 +29,12 @@ class CSES(TethysAppBase):
                 name='Access_key_ID',
                 type=CustomSetting.TYPE_STRING, 
                 description='AWS bucket S3 Access Key',
-                required=True
+                required=False
             ),
             SecretCustomSetting(
                 name='Secret_access_key',
                 description='AWS bucket S3 Secret access Key',
-                required=True
+                required=False
             ),
 
         )
