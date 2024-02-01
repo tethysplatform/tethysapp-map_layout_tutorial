@@ -15,6 +15,8 @@ requirements:
     - pandas
     - geopandas
     - boto3
+    - scikit-learn
+    - hydroeval
 
   pip:
 

@@ -15,6 +15,13 @@ from botocore.client import Config
 import os
 os.environ['AWS_NO_SIGN_REQUEST'] = 'YES'
 
+#Model evaluation metrics
+from sklearn.metrics import r2_score
+from sklearn.metrics import mean_squared_error
+from sklearn.metrics import max_error
+from sklearn.metrics import mean_absolute_percentage_error
+import hydroeval as he
+
 
 #Date picker
 from tethys_sdk.gizmos import DatePicker
@@ -315,7 +322,10 @@ class Reach_Eval(MapLayout):
             layout = {
                 'yaxis': {
                     'title': 'Streamflow (cfs)'
-                } 
+                },
+                'xaxis': {
+                    'title': 'Date'
+                }
             }  
 
             #USGS observed flow
@@ -351,6 +361,15 @@ class Reach_Eval(MapLayout):
                 USGS_streamflow_cfs = DF.USGS_flow.to_list()#limited to less than 500 obs/days 
                 Mod_streamflow_cfs = DF[f"{model_id[:3]}_flow"].to_list()#limited to less than 500 obs/days
 
+                #calculate model skill
+                r2 = round(r2_score(USGS_streamflow_cfs, Mod_streamflow_cfs),2)
+                rmse = round(mean_squared_error(USGS_streamflow_cfs, Mod_streamflow_cfs, squared=False),0)
+                maxerror = round(max_error(USGS_streamflow_cfs, Mod_streamflow_cfs),0)
+                MAPE = round(mean_absolute_percentage_error(USGS_streamflow_cfs, Mod_streamflow_cfs)*100,0)
+                kge, r, alpha, beta = he.evaluator(he.kge,USGS_streamflow_cfs,Mod_streamflow_cfs)
+                kge = round(kge[0],2)
+ 
+ 
                 data = [
                     {
                         'name': 'USGS Observed',
@@ -362,7 +381,7 @@ class Reach_Eval(MapLayout):
                             'color': 'blue'
                         }
                     },
-                    {
+                    { 
                         'name': f"{model_id} Modeled",
                         'mode': 'lines',
                         'x': time_col,
@@ -373,9 +392,9 @@ class Reach_Eval(MapLayout):
                         }
                     },
                 ]
+                
 
-
-                return f'{model_id} Modeled and Observed Streamflow at USGS site: {id}', data, layout
+                return f"{model_id} and Observed Streamflow at USGS site: {id} <br> RMSE: {rmse} cfs <br> KGE: {kge} <br> MaxError: {maxerror} cfs", data, layout
             
             except:
                 print("No user inputs, default configuration.")
@@ -396,6 +415,14 @@ class Reach_Eval(MapLayout):
                 time_col = DF.Datetime.to_list()[:45] 
                 USGS_streamflow_cfs = DF.USGS_flow.to_list()[:45] 
                 Mod_streamflow_cfs = DF[f"{model[:3]}_flow"].to_list()[:45]
+
+                #calculate model skill
+                r2 = round(r2_score(USGS_streamflow_cfs, Mod_streamflow_cfs),2)
+                rmse = round(mean_squared_error(USGS_streamflow_cfs, Mod_streamflow_cfs, squared=False),0)
+                maxerror = round(max_error(USGS_streamflow_cfs, Mod_streamflow_cfs),0)
+                MAPE = round(mean_absolute_percentage_error(USGS_streamflow_cfs, Mod_streamflow_cfs)*100,0)
+                kge, r, alpha, beta = he.evaluator(he.kge,USGS_streamflow_cfs,Mod_streamflow_cfs)
+                kge = round(kge[0],2)
 
                 data = [
                     {
@@ -421,4 +448,5 @@ class Reach_Eval(MapLayout):
                 ]
 
 
-                return f'Default Configuration:{model} Observed Streamflow at USGS site: {id}', data, layout
+                return f'Default Configuration:{model} Observed Streamflow at USGS site: {id} <br> RMSE: {rmse} cfs <br> KGE: {kge} <br> MaxError: {maxerror} cfs', data, layout
+            

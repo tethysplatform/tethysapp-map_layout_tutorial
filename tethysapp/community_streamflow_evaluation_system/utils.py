@@ -3,28 +3,6 @@ from .app import CSES as app
 import pandas as pd
 import geopandas as gpd
 
-# from tethys_sdk.routing import controller
-# from .app import CSES as app
-
-# #functions to load AWS data
-# import boto3
-# import os
-# from botocore import UNSIGNED 
-# from botocore.client import Config
-# import os
-# os.environ['AWS_NO_SIGN_REQUEST'] = 'YES'
-
-# ACCESS_KEY_ID = app.get_custom_setting('Access_key_ID')
-# ACCESS_KEY_SECRET = app.get_custom_setting('Secret_access_key')
-
-
-# #start session
-# SESSION = boto3.Session(
-#     aws_access_key_id=ACCESS_KEY_ID,
-#     aws_secret_access_key=ACCESS_KEY_SECRET
-# )
-# s3 = SESSION.resource('s3')
-
 
 #code for combining json files
 def combine_jsons(file_list, BUCKET_NAME, s3):
