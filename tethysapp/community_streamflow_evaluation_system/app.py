@@ -15,7 +15,7 @@ class CSES(TethysAppBase):
     description = (
         '"A tethys app that lets the user to visualize and query modeled streamflow'
     )
-    tags = '"Hydrology", "WMO", "BYU"'
+    tags = '"Hydrology", "WMO", "UA"'
     enable_feedback = False
     feedback_emails = []
     controller_modules = ["controllers", "State_Controller", "Reach_Controller", "HUC_Controller"]
