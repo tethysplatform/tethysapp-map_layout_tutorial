@@ -179,6 +179,7 @@ class HUC_Eval(MapLayout):
                 HUCunit = 'WBDHU'+str(len(h))       
                 filepath = f"s3://{BUCKET_NAME}/WBD/WBD_{HU}_HU2_GDB/WBD_{HU}_HU2_GDB.gdb/"
                 HUC_G = gpd.read_file(filepath, layer=HUCunit)
+                
     
                 #select HUC
                 HUC_G = HUC_G[HUC_G[HUC_length] == h] 
@@ -212,6 +213,7 @@ class HUC_Eval(MapLayout):
             #get list of sites
             reach_ids = list(set(list(sites['NWIS_site_id'])))
             reach_ids = [str(reach) for reach in reach_ids]
+            reach_ids = ["0"+str(i) if len(i) <8 else i for i in reach_ids]  
 
             #get list of states to request geojson files
             stateids = list(set(list(sites['state_id'])))
@@ -234,7 +236,7 @@ class HUC_Eval(MapLayout):
             #reset index and drop any duplicates
             finaldf.reset_index(inplace = True, drop = True)
             finaldf.drop_duplicates('USGS_id', inplace = True)       
-
+   
             return finaldf
 
         except KeyError:
