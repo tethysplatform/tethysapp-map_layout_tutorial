@@ -1,7 +1,7 @@
 from tethys_sdk.base import TethysAppBase
 
 
-class MapLayoutTutorial(TethysAppBase):
+class App(TethysAppBase):
     """
     Tethys app class for Map Layout Tutorial.
     """
