@@ -1,7 +1,7 @@
 from tethys_sdk.base import TethysAppBase
 
 
-class MapLayoutTutorial(TethysAppBase):
+class App(TethysAppBase):
     """
     Tethys app class for Map Layout Tutorial.
     """
@@ -12,7 +12,7 @@ class MapLayoutTutorial(TethysAppBase):
     index = 'home'
     icon = f'{package}/images/icon.gif'
     root_url = 'map-layout-tutorial'
-    color = '#f39c12'
+    color = '#003087'
     tags = ''
     enable_feedback = False
     feedback_emails = []
